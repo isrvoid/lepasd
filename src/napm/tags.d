@@ -1,7 +1,9 @@
 module napm.tags;
 
 import std.range;
+import std.regex;
 import std.typecons : nullable, Nullable, tuple;
+import std.traits : isSomeString;
 
 @safe:
 
@@ -21,7 +23,6 @@ struct Tag
 
 auto parseOpt(string rawOpt) pure
 {
-    import std.regex;
     import std.array : split;
     import std.conv : to;
 
@@ -116,6 +117,9 @@ unittest
 
     // dupliacate encoding option
     assertThrown(parseOpt("a v1 16 a"));
+
+    // version truncated
+    assertThrown(parseOpt("v 20"));
 }
 
 @("ignores whitespace")
@@ -123,4 +127,92 @@ unittest
 {
     const expect = Tag("foo", nullable(0u), 32, Tag.Encoding.alphanumeric);
     assert(expect == Tag("foo", parseOpt("\tv0  \t  \t 32\t\ta    ").expand));
+}
+
+Nullable!Tag findTag(R)(R lines, string tagName) pure
+if (isSomeString!(ElementType!R))
+{
+    import std.string : strip;
+    enum rTag = ctRegex!`^\W*@\W*([^\W]+)`;
+    tagName = tagName.strip;
+    foreach (ref line; lines)
+    {
+        auto c = line.matchFirst(rTag);
+        if (c[1] == tagName)
+            return nullable(Tag(tagName, c.post.parseOpt.expand));
+        // TODO add line number on exception
+    }
+    return Nullable!Tag();
+}
+
+@("empty")
+unittest
+{
+    assert(findTag([""], "foo").isNull);
+}
+
+@("single tag")
+unittest
+{
+    assert(Tag("foo") == findTag(["@foo"], "foo"));
+}
+
+@("single tag with options")
+unittest
+{
+    const expect = Tag("foo", nullable(3u), 16, Tag.Encoding.alphanumeric);
+    assert(expect == findTag(["@foo 16 a v3"], "foo"));
+}
+
+@("different tag")
+unittest
+{
+    assert(findTag(["@foo"], "fo").isNull);
+}
+
+@("tag name as comment")
+unittest
+{
+    assert(findTag(["foo"], "foo").isNull);
+}
+
+@("first matches")
+unittest
+{
+    const lines = ["@foo v3", "@bar 16"];
+    assert(Tag("foo", nullable(3u)) == findTag(lines, "foo"));
+}
+
+@("last matches")
+unittest
+{
+    const lines = ["@foo v3", "@bar 16"];
+    assert(Tag("bar", Nullable!uint(), 16) == findTag(lines, "bar"));
+}
+
+@("mid matches")
+unittest
+{
+    const lines = ["@foo", "@bar v1 16", "@fun a"];
+    assert(Tag("bar", nullable(1u), 16) == findTag(lines, "bar"));
+}
+
+@("comments are ignored")
+unittest
+{
+    const lines = ["@foo", "foo comment", "another", "@bar v1", "bar comment"];
+    assert(Tag("bar", nullable(1u)) == findTag(lines, "bar"));
+}
+
+@("whitespace is ignored")
+unittest
+{
+    const lines = ["info", " @\t foo", "info", "\t  @  \t bar   \t v2  "];
+    assert(Tag("bar", nullable(2u)) == findTag(lines, "bar"));
+}
+
+@("whitespace is stripped from name")
+unittest
+{
+    assert(Tag("foo") == findTag(["@foo"], "\n\tfoo   \n"));
 }
