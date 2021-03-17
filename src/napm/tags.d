@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2021 Johannes Teichrieb
+ * MIT License
+ */
+
 module napm.tags;
 
 import std.range;
