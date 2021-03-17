@@ -4,13 +4,14 @@ import std.range;
 import std.regex;
 import std.typecons : nullable, Nullable, tuple;
 import std.traits : isSomeString;
+import std.conv : to;
 
 @safe:
 
 struct Tag
 {
     string name;
-    Nullable!uint version_;
+    Nullable!uint ver;
     ubyte length = 20;
 
     enum Encoding
@@ -24,11 +25,9 @@ struct Tag
 auto parseOpt(string rawOpt) pure
 {
     import std.array : split;
-    import std.conv : to;
-
     auto opt = Tag.init.tupleof[1 .. $];
     auto tokens = rawOpt.split;
-    auto isSet = tuple!(bool, "version_", bool, "length", bool, "type");
+    auto isSet = tuple!(bool, "ver", bool, "length", bool, "type");
     while (!tokens.empty)
     {
         enum rOpt = ctRegex!`^v(\d+)$|^(\d+)$|^(a)$`;
@@ -36,13 +35,13 @@ auto parseOpt(string rawOpt) pure
         if (c.empty)
             throw new Exception("Invalid option");
 
-        if (c[1] && isSet.version_ || c[2] && isSet.length || c[3] && isSet.type)
+        if (c[1] && isSet.ver || c[2] && isSet.length || c[3] && isSet.type)
             throw new Exception("Duplicate option");
 
         if (c[1])
         {
             opt[0] = c[1].to!uint;
-            isSet.version_ = true;
+            isSet.ver = true;
         }
         else if (c[2])
         {
@@ -215,4 +214,38 @@ unittest
 unittest
 {
     assert(Tag("foo") == findTag(["@foo"], "\n\tfoo   \n"));
+}
+
+string toLine(Tag tag) pure nothrow
+{
+    import std.array : Appender;
+    Appender!string opt;
+    if (tag.ver != Tag.init.ver)
+    {
+        opt ~= 'v';
+        opt ~= tag.ver.get().to!string;
+        opt ~= ' ';
+    }
+    if (tag.length != Tag.init.length)
+    {
+        opt ~= tag.length.to!string;
+        opt ~= ' ';
+    }
+    if (tag.type != Tag.init.type)
+        opt ~= 'a';
+
+    auto name = '@' ~ tag.name;
+    return opt.data ? name ~ ' ' ~ opt.data : name;
+}
+
+@("full tag")
+unittest
+{
+    assert("@foo v1 16 a" == toLine(Tag("foo", nullable(1u), 16, Tag.Encoding.alphanumeric)));
+}
+
+@("default values are not written")
+unittest
+{
+    assert("@foo" == toLine(Tag("foo")));
 }
