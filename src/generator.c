@@ -24,7 +24,11 @@ static void setDummySalt(void* salt) {
 
 static argon2_context argon2ContextTemplate(void) {
     argon2_context c = {
+        // .out = NULL,
         .outlen = NAPM_HASH_LENGTH,
+        // .pwd = NULL,
+        // .pwdlen = 0,
+        // .salt = NULL,
         .saltlen = NAPM_HASH_LENGTH,
         .secret = NULL, .secretlen = 0,
         .ad = NULL, .adlen = 0,
@@ -35,8 +39,6 @@ static argon2_context argon2ContextTemplate(void) {
         .allocate_cbk = NULL, .free_cbk = NULL,
         .flags = ARGON2_FLAG_CLEAR_PASSWORD
     };
-    // values to set:
-    // out, pwd, pwdlen, salt
     return c;
 }
 
@@ -51,10 +53,9 @@ void napm_init(void* password, uint32_t length) {
     c.salt = salt;
     if (argon2id_ctx(&c) != ARGON2_OK) {
         memset(password, 0, length);
-        memset(hash, 0, sizeof hash);
         assert(0);
     }
-    // password was wiped (.flags in argon2_context)
+    // password has been wiped (.flags in argon2_context)
 
     sha3_init(&shaContext, NAPM_HASH_LENGTH);
     sha3_update(&shaContext, hash, sizeof hash);
