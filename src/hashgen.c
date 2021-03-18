@@ -3,7 +3,7 @@
  * MIT License
  */
 
-#include "generator.h"
+#include "hashgen.h"
 
 #include <assert.h>
 #include <string.h>

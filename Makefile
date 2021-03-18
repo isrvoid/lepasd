@@ -17,7 +17,7 @@ ARGON2 := $(ARGON2DIR)/$(ARGON2TARGET)
 SHA3DIR := third_party/tiny_sha3
 SHA3 := $(SHA3DIR)/sha3.o
 
-bin/napm: bin/generator.o $(ARGON2) $(SHA3) $(NAPMSRC)
+bin/napm: bin/hashgen.o $(ARGON2) $(SHA3) $(NAPMSRC)
 	@dmd $(DFLAGS) $^ -of$@
 
 bin/unittest: $(UNITTESTSRC)
@@ -26,8 +26,8 @@ bin/unittest: $(UNITTESTSRC)
 # FIXME $(CC), -O3, warnings
 DISABLE_WARNING := -Wno-missing-prototypes -Wno-documentation-unknown-command -Wno-padded
 CINCLUDES := -I$(SHA3DIR) -I$(ARGON2DIR)/include
-CSRC := src/generator.c
-bin/generator.o: $(CSRC)
+CSRC := src/hashgen.c
+bin/hashgen.o: $(CSRC)
 	@clang -c -O1 -std=c11 -Weverything $(DISABLE_WARNING) $(CINCLUDES) $(CSRC) -o $@
 
 $(ARGON2):
