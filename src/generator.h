@@ -8,11 +8,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define NAPM_HASH_LENGTH 64U
+#define NAPM_CONTEXT_SIZE 216
+#define NAPM_HASH_SIZE 64
 
 // password is wiped by argon2
-void napm_init(void* password, uint32_t length);
+// contextOut shall have at least NAPM_CONTEXT_SIZE bytes
+void napm_init(void* password, uint32_t length, void* contextOut);
 
-// napm_init() shall be called before any calls to napm_hash()
-// hashOut shall have at least NAPM_HASH_LENGTH bytes
-void napm_hash(const void* tag, size_t tagLength, void* hashOut);
+// context should be initialized by napm_init() before napm_hash() calls
+// skipping napm_init() or writing to the context results in bogus hashOut
+// hashOut shall have at least NAPM_HASH_SIZE bytes
+void napm_hash(const void* context, const void* tag, size_t tagLength, void* hashOut);

@@ -11,25 +11,20 @@
 #include <argon2.h>
 #include <sha3.h>
 
-// the SHA3 implementation can,t fail for controlled lengths; its return values are ignored
-
-static sha3_ctx_t shaContext;
-static uint8_t isInitialized;
-
 static void setDummySalt(void* salt) {
     // There is no salt, because no password is ever stored. The fixed value avoids zeros.
     const char s[] = "napm dummy salt";
-    sha3(s, sizeof s - 1, salt, NAPM_HASH_LENGTH);
+    sha3(s, sizeof s - 1, salt, NAPM_HASH_SIZE);
 }
 
 static argon2_context argon2ContextTemplate(void) {
     argon2_context c = {
         // .out = NULL,
-        .outlen = NAPM_HASH_LENGTH,
+        .outlen = NAPM_HASH_SIZE,
         // .pwd = NULL,
         // .pwdlen = 0,
         // .salt = NULL,
-        .saltlen = NAPM_HASH_LENGTH,
+        .saltlen = NAPM_HASH_SIZE,
         .secret = NULL, .secretlen = 0,
         .ad = NULL, .adlen = 0,
         .t_cost = 8, // passes
@@ -42,30 +37,32 @@ static argon2_context argon2ContextTemplate(void) {
     return c;
 }
 
-void napm_init(void* password, uint32_t length) {
-    uint8_t salt[NAPM_HASH_LENGTH];
+void napm_init(void* password, uint32_t length, void* contextOut) {
+    uint8_t salt[NAPM_HASH_SIZE];
     setDummySalt(salt);
-    uint8_t hash[NAPM_HASH_LENGTH];
-    argon2_context c = argon2ContextTemplate();
-    c.out = hash;
-    c.pwd = password;
-    c.pwdlen = length;
-    c.salt = salt;
-    if (argon2id_ctx(&c) != ARGON2_OK) {
+    uint8_t hash[NAPM_HASH_SIZE];
+    argon2_context ac = argon2ContextTemplate();
+    ac.out = hash;
+    ac.pwd = password;
+    ac.pwdlen = length;
+    ac.salt = salt;
+    if (argon2id_ctx(&ac) != ARGON2_OK) {
         memset(password, 0, length);
         assert(0);
     }
     // password has been wiped (.flags in argon2_context)
 
-    sha3_init(&shaContext, NAPM_HASH_LENGTH);
-    sha3_update(&shaContext, hash, sizeof hash);
+    sha3_ctx_t sc;
+    sha3_init(&sc, NAPM_HASH_SIZE);
+    sha3_update(&sc, hash, sizeof hash);
     memset(hash, 0, sizeof hash);
-    isInitialized = 1;
+    _Static_assert(NAPM_CONTEXT_SIZE == sizeof(sha3_ctx_t), "Invalid NAPM_CONTEXT_SIZE");
+    *(sha3_ctx_t*)contextOut = sc;
+    memset(&sc, 0, sizeof sc);
 }
 
-void napm_hash(const void* tag, size_t tagLength, void* hashOut) {
-    assert(isInitialized);
-    sha3_ctx_t c = shaContext;
+void napm_hash(const void* context, const void* tag, size_t tagLength, void* hashOut) {
+    sha3_ctx_t c = *(const sha3_ctx_t*)context;
     sha3_update(&c, tag, tagLength);
     sha3_final(hashOut, &c);
     memset(&c, 0, sizeof c);
