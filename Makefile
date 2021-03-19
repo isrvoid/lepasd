@@ -8,7 +8,7 @@ else
 endif
 
 UNITTESTSRC := src/napm/tags.d
-NAPMSRC := src/napm/app.d src/napm/hashgen.d
+NAPMSRC := src/napm/app.d src/napm/hashgen.d src/napm/tags.d
 
 ARGON2DIR := third_party/argon2
 ARGON2TARGET := libargon2.a

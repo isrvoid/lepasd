@@ -27,7 +27,8 @@ struct Tag
     auto type = Encoding.base64;
 }
 
-auto parseOpt(string rawOpt) pure
+auto parseOpt(R)(R rawOpt) pure
+if (isSomeString!R)
 {
     import std.array : split;
     auto opt = Tag.init.tupleof[1 .. $];
@@ -133,7 +134,7 @@ unittest
     assert(expect == Tag("foo", parseOpt("\tv0  \t  \t 32\t\ta    ").expand));
 }
 
-Nullable!Tag findTag(R)(R lines, string tagName) pure
+Nullable!Tag findTag(R)(R lines, string tagName) @trusted
 if (isSomeString!(ElementType!R))
 {
     import std.string : strip;

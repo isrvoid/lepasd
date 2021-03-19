@@ -4,15 +4,18 @@
  */
 
 module napm.app;
+import std.path : buildPath;
+import std.file;
+import std.exception : enforce;
+import std.format : format;
 
 void main(string[] args)
 {
     import std.getopt;
-
-    bool shouldAddTag, isTagLine;
+    bool isNewTag, isTagLine;
     auto opt = getopt(args,
             config.passThrough,
-            "add|a", "Add tag to napm_tags.", &shouldAddTag,
+            "add|a", "Add new tag to napm_tags.", &isNewTag,
             "tag|t", "Use tag ignoring napm_tags. Intended for one-off use.", &isTagLine
             );
 
@@ -25,4 +28,47 @@ void main(string[] args)
                 opt.options);
         return;
     }
+
+    if (isNewTag)
+    {
+        writeNewTag(args[1 .. $]);
+
+        if (!isTagLine)
+            return;
+    }
+}
+
+@safe:
+
+const string configDir;
+static this()
+{
+    import std.process : environment;
+    const home = environment.get("HOME");
+    enforce(home, "HOME not set");
+    configDir = buildPath(home, ".config", "napm");
+}
+
+void writeNewTag(string[] args)
+{
+    import std.array : join;
+    import std.stdio : File;
+    import napm.tags;
+    enforce(args.length, "Missing tag argument");
+    const tag = Tag(args[0], args[1 .. $].join(" ").parseOpt.expand);
+
+    if (!exists(configDir))
+        mkdirRecurse(configDir);
+
+    enum fileName = "napm_tags";
+    auto file = File(buildPath(configDir, fileName), "a+");
+    bool tagExists() @trusted
+    {
+        if (!file.size)
+            return false;
+
+        return file.byLine.findTag(tag.name).isNull == false;
+    }
+    enforce(!tagExists, format!"Tag '%s' already exists in %s"(tag.name, fileName));
+    file.writeln(tag.toLine);
 }
