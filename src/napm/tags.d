@@ -240,18 +240,18 @@ string toLine(Tag tag) pure nothrow
     if (tag.type != Tag.init.type)
         opt ~= 'a';
 
-    auto name = '@' ~ tag.name;
+    auto name = "@ " ~ tag.name;
     return opt.data ? name ~ ' ' ~ opt.data : name;
 }
 
 @("full tag")
 unittest
 {
-    assert("@foo v1 16 a" == toLine(Tag("foo", nullable(1u), 16, Tag.Encoding.alphanumeric)));
+    assert("@ foo v1 16 a" == toLine(Tag("foo", nullable(1u), 16, Tag.Encoding.alphanumeric)));
 }
 
 @("default values are not written")
 unittest
 {
-    assert("@foo" == toLine(Tag("foo")));
+    assert("@ foo" == toLine(Tag("foo")));
 }
