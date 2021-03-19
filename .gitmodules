@@ -1,6 +1,6 @@
 [submodule "third_party/argon2"]
 	path = third_party/argon2
-	url = git@github.com:P-H-C/phc-winner-argon2.git
+	url = https://github.com/P-H-C/phc-winner-argon2.git
 [submodule "third_party/tiny_sha3"]
 	path = third_party/tiny_sha3
-	url = git@github.com:mjosaarinen/tiny_sha3.git
+	url = https://github.com/mjosaarinen/tiny_sha3.git
