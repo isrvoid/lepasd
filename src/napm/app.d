@@ -68,13 +68,10 @@ void writeNewTag(Tag tag)
 
     enum fileName = "napm_tags";
     auto file = File(buildPath(configDir, fileName), "a+");
-    bool tagExists() @trusted
-    {
-        if (!file.size)
-            return false;
-
-        return file.byLine.findTag(tag.name).isNull == false;
-    }
-    enforce(!tagExists, format!"Tag '%s' already exists in %s"(tag.name, fileName));
+    const isFileEmpty = !file.size;
+    auto isNewTag = () @trusted => isFileEmpty || file.byLine.findTag(tag.name).isNull;
+    enforce(isNewTag(), format!"Tag '%s' already exists in %s"(tag.name, fileName));
+    if (!isFileEmpty)
+        file.writeln();
     file.writeln(tag.toLine);
 }
