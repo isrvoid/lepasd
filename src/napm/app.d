@@ -9,6 +9,8 @@ import std.file;
 import std.exception : enforce;
 import std.format : format;
 
+import napm.tags;
+
 void main(string[] args)
 {
     import std.getopt;
@@ -31,7 +33,8 @@ void main(string[] args)
 
     if (isNewTag)
     {
-        writeNewTag(args[1 .. $]);
+        const tag = parseTag(args[1 .. $]);
+        writeNewTag(tag);
 
         if (!isTagLine)
             return;
@@ -39,6 +42,13 @@ void main(string[] args)
 }
 
 @safe:
+
+Tag parseTag(string[] args)
+{
+    import std.array : join;
+    enforce(args.length, "Missing tag argument");
+    return Tag(args[0], args[1 .. $].join(" ").parseOpt.expand);
+}
 
 const string configDir;
 static this()
@@ -49,14 +59,10 @@ static this()
     configDir = buildPath(home, ".config", "napm");
 }
 
-void writeNewTag(string[] args)
+void writeNewTag(Tag tag)
 {
     import std.array : join;
     import std.stdio : File;
-    import napm.tags;
-    enforce(args.length, "Missing tag argument");
-    const tag = Tag(args[0], args[1 .. $].join(" ").parseOpt.expand);
-
     if (!exists(configDir))
         mkdirRecurse(configDir);
 
