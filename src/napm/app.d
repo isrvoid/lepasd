@@ -26,9 +26,9 @@ void main(string[] args)
     if (opt.helpWanted)
     {
         defaultGetoptPrinter("Type out passwords based on a single password, storage free.\nUsage:\n" ~
-                "  Start the daemon with 'input' group privilege:\n  $ sudo napm -g input\n" ~
+                "  Start the daemon:\n  $ napm\n" ~
                 "  Assuming napm_tags has '@sometag', arm typing:\n  $ napm sometag\n" ~
-                "  Within 10 s select the password field and press 'Ctrl' twice to type out the password.",
+                "  Within 10 s select the password field and press FIXME to type out the password.",
                 opt.options);
         return;
     }
