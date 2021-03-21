@@ -6,7 +6,7 @@
 module napm.app;
 
 import std.array : array, join;
-import std.path : buildPath, asRelativePath;
+import std.path : buildPath;
 import std.exception : enforce;
 import std.file;
 import std.stdio : File, writeln;
@@ -28,12 +28,7 @@ void main(string[] args)
 
     if (opt.helpWanted)
     {
-        defaultGetoptPrinter("Type out passwords based on a single password, storage free.\n\nUsage:\n" ~
-                "  Start the daemon:\n  $ napm\n" ~
-                "  Assuming napm/tags has '@sometag', arm typing:\n  $ napm sometag\n" ~
-                "  Within 10 s select the password field and press FIXME to type out the password.\n\n" ~
-                "Files (tags, crc) are stored in '" ~ buildPath("~", relConfigDir) ~ "'\n",
-                opt.options);
+        defaultGetoptPrinter(helpText(), opt.options);
         return;
     }
 
@@ -76,6 +71,14 @@ void main(string[] args)
         tag = loadTag(args[0]);
 
     sendTag(tag);
+}
+
+auto helpText()
+{
+    enum configDirHelp = buildPath("~", relConfigDir);
+    enum crcPathHelp = buildPath("~", relConfigDir, crcBaseName);
+    enum rawHelpFile = import("apphelp.txt");
+    return format!rawHelpFile(10, "Ctrl twice", configDirHelp, crcPathHelp);
 }
 
 bool isDaemonRunning()
@@ -150,15 +153,6 @@ void runDaemon()
     // FIXME this has to work without input group; extract interface; use external tool
     enforce(canReadKeyboard(), "Failed to open keyboard. Not 'input' group member?");
 
-    // TODO refactor
-    const refCrc = loadCrc();
-    if (refCrc.isNull)
-    {
-        writeln("A good password is strong and easy to remember: a made up sentence or combination of words.");
-        writeln("Recommended length is at least 12 characters.");
-        writeln("There is no strength analysis, choose wisely. The length can't be 0.");
-        writeln();
-    }
     char[257] buf;
     scope(exit) buf[] = 0;
 retry:
@@ -189,6 +183,7 @@ retry:
     scope(exit) gen.m.destroy!false();
 
     const crc = gen.hash("CRC-32").crc32Of.crcHexString;
+    const refCrc = loadCrc();
     if (refCrc.isNull)
         storeCrc(crc);
     else if (crc != refCrc.get)
@@ -220,7 +215,7 @@ bool canReadKeyboard()
     throw new Exception("No keyboard found");
 }
 
-Nullable!string loadCrc()
+Nullable!string loadCrc() nothrow
 {
     import std.algorithm : map;
     import std.ascii : toUpper;
@@ -240,8 +235,5 @@ void storeCrc(string s)
         file.rawWrite(s);
         file.writeln();
     }
-    writeln("CRC written: ", s);
-    writeln("If it seems unfamiliar, consider killing and restaring the daemon to verify the password.");
-    enum crcHintPath = buildPath("~", relConfigDir, crcBaseName);
-    writeln("If it's wrong, remove '" ~ crcHintPath ~ "' and restart the daemon to retype.");
+    writeln("CRC created: ", s);
 }

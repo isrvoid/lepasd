@@ -19,7 +19,7 @@ SHA3DIR := third_party/tiny_sha3
 SHA3 := $(SHA3DIR)/sha3.o
 
 bin/napm: bin/hashgen.o bin/util.o $(ARGON2) $(SHA3) $(NAPMSRC)
-	@dmd $(DFLAGS) $^ -of$@
+	@dmd $(DFLAGS) -Jsrc/napm $^ -of$@
 
 bin/unittest: $(UNITTESTSRC)
 	@dmd $(DFLAGS) -unittest -main $^ -of$@
