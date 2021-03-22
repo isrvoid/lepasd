@@ -13,18 +13,18 @@
 
 static void setDummySalt(void* salt) {
     // There is no salt, because no password is ever stored. The fixed value avoids zeros.
-    const char s[] = "napm dummy salt";
-    sha3(s, sizeof s - 1, salt, NAPM_HASH_SIZE);
+    const char s[] = "lepasd dummy salt";
+    sha3(s, sizeof s - 1, salt, LEPASD_HASH_SIZE);
 }
 
 static argon2_context argon2ContextTemplate(void) {
     argon2_context c = {
         // .out = NULL,
-        .outlen = NAPM_HASH_SIZE,
+        .outlen = LEPASD_HASH_SIZE,
         // .pwd = NULL,
         // .pwdlen = 0,
         // .salt = NULL,
-        .saltlen = NAPM_HASH_SIZE,
+        .saltlen = LEPASD_HASH_SIZE,
         .secret = NULL, .secretlen = 0,
         .ad = NULL, .adlen = 0,
         .t_cost = 8, // passes
@@ -37,10 +37,10 @@ static argon2_context argon2ContextTemplate(void) {
     return c;
 }
 
-void napm_init(void* password, uint32_t length, void* contextOut) {
-    uint8_t salt[NAPM_HASH_SIZE];
+void lepasd_init(void* password, uint32_t length, void* contextOut) {
+    uint8_t salt[LEPASD_HASH_SIZE];
     setDummySalt(salt);
-    uint8_t hash[NAPM_HASH_SIZE];
+    uint8_t hash[LEPASD_HASH_SIZE];
     argon2_context ac = argon2ContextTemplate();
     ac.out = hash;
     ac.pwd = password;
@@ -53,15 +53,15 @@ void napm_init(void* password, uint32_t length, void* contextOut) {
     // password has been wiped (.flags in argon2_context)
 
     sha3_ctx_t sc;
-    sha3_init(&sc, NAPM_HASH_SIZE);
+    sha3_init(&sc, LEPASD_HASH_SIZE);
     sha3_update(&sc, hash, sizeof hash);
     memset(hash, 0, sizeof hash);
-    _Static_assert(NAPM_CONTEXT_SIZE == sizeof(sha3_ctx_t), "Invalid NAPM_CONTEXT_SIZE");
+    _Static_assert(LEPASD_CONTEXT_SIZE == sizeof(sha3_ctx_t), "Invalid LEPASD_CONTEXT_SIZE");
     *(sha3_ctx_t*)contextOut = sc;
     memset(&sc, 0, sizeof sc);
 }
 
-void napm_hash(const void* context, const void* tag, size_t tagLength, void* hashOut) {
+void lepasd_hash(const void* context, const void* tag, size_t tagLength, void* hashOut) {
     sha3_ctx_t c = *(const sha3_ctx_t*)context;
     sha3_update(&c, tag, tagLength);
     sha3_final(hashOut, &c);

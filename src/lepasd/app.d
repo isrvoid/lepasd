@@ -3,7 +3,7 @@
  * MIT License
  */
 
-module napm.app;
+module lepasd.app;
 
 import std.array : array, join;
 import std.path : buildPath;
@@ -14,7 +14,7 @@ import std.format : format;
 import std.typecons : Nullable;
 import std.string : strip;
 
-import napm.tags;
+import lepasd.tags;
 
 void main(string[] args)
 {
@@ -85,9 +85,9 @@ bool isDaemonRunning()
 {
     try
     {
-        const sPid = buildPath(tempDir(), "napm", "pid").readText.strip;
+        const sPid = buildPath(tempDir(), "lepasd", "pid").readText.strip;
         const processName = buildPath("/proc", sPid, "comm").readText.strip;
-        return processName == "napm";
+        return processName == "lepasd";
     }
     catch (Exception)
         return false;
@@ -99,7 +99,7 @@ Tag parseTag(string[] args) @safe
     return Tag(args[0], args[1 .. $].join(" ").parseOpt.expand);
 }
 
-enum relConfigDir = buildPath(".config", "napm");
+enum relConfigDir = buildPath(".config", "lepasd");
 enum tagsBaseName = "tags";
 enum crcBaseName = "crc";
 const string configDir;
@@ -143,7 +143,7 @@ void sendTag(Tag tag)
     writeln("armed");
 }
 
-extern (C) int napm_getpassword(void*, size_t) @nogc;
+extern (C) int lepasd_getpassword(void*, size_t) @nogc;
 
 void runDaemon()
 {
@@ -157,7 +157,7 @@ void runDaemon()
     scope(exit) buf[] = 0;
 retry:
     write("Password: ");
-    const length = napm_getpassword(&buf[0], buf.length);
+    const length = lepasd_getpassword(&buf[0], buf.length);
     writeln();
     if (length == -1)
     {
@@ -171,7 +171,7 @@ retry:
     enforce(length < buf.length, format!"Max password length: %d"(buf.length - 1));
     class GenWrapper
     {
-        import napm.hashgen;
+        import lepasd.hashgen;
         HashGen m;
         alias m this;
         this(char[] pw)

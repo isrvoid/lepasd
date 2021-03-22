@@ -3,7 +3,7 @@
  * MIT License
  */
 
-module napm.tags;
+module lepasd.tags;
 
 import std.range;
 import std.regex;

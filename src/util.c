@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <termios.h>
 
-int napm_getpassword(void* dest, size_t n) {
+int lepasd_getpassword(void* dest, size_t n) {
     if (n > INT_MAX) {
         errno = EINVAL;
         return -1;

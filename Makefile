@@ -8,8 +8,8 @@ endif
 
 VPATH := src
 
-UNITTESTSRC := napm/tags.d
-NAPMSRC := napm/app.d napm/hashgen.d napm/tags.d
+UNITTESTSRC := lepasd/tags.d
+LEPASDSRC := lepasd/app.d lepasd/hashgen.d lepasd/tags.d
 
 ARGON2DIR := third_party/argon2
 ARGON2TARGET := libargon2.a
@@ -18,8 +18,8 @@ ARGON2 := $(ARGON2DIR)/$(ARGON2TARGET)
 SHA3DIR := third_party/tiny_sha3
 SHA3 := $(SHA3DIR)/sha3.o
 
-bin/napm: bin/hashgen.o bin/util.o $(ARGON2) $(SHA3) $(NAPMSRC)
-	@dmd $(DFLAGS) -Jsrc/napm $^ -of$@
+bin/lepasd: bin/hashgen.o bin/util.o $(ARGON2) $(SHA3) $(LEPASDSRC)
+	@dmd $(DFLAGS) -Jsrc/lepasd $^ -of$@
 
 bin/unittest: $(UNITTESTSRC)
 	@dmd $(DFLAGS) -unittest -main $^ -of$@

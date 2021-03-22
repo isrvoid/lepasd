@@ -2,9 +2,9 @@ Type out passwords based on a single password, storage free.
 
 Usage:
   Start the daemon:
-  $ napm
-  Assuming napm/tags has '@sometag', arm typing:
-  $ napm sometag
+  $ lepasd
+  Assuming lepasd/tags has '@sometag', arm typing:
+  $ lepasd sometag
   Within %d s select the password field and press %s to type out the password.
 
 Files (tags, crc) are stored in '%s'
@@ -16,3 +16,6 @@ Choosing a password:
 When new CRC is created:
   If the CRC seems unfamiliar, consider killing and restaring the daemon to verify the password.
   If it's wrong, remove '%s' and restart the daemon to retype.
+
+'tags' options:
+  FIXME
