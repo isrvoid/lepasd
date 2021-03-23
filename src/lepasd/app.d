@@ -75,10 +75,14 @@ void main(string[] args)
 
 auto helpText()
 {
-    enum configDirHelp = buildPath("~", relConfigDir);
-    enum crcPathHelp = buildPath("~", relConfigDir, crcBaseName);
-    enum rawHelpFile = import("apphelp.txt");
-    return format!rawHelpFile(10, "Ctrl twice", configDirHelp, crcPathHelp);
+    enum
+    {
+        confDir = buildPath("~", relConfigDir),
+        crc = buildPath("~", relConfigDir, crcBaseName),
+        tags = buildPath("~", relConfigDir, tagsBaseName),
+        rawHelpFile = import("apphelp.txt")
+    }
+    return format!rawHelpFile(10, "Ctrl twice", confDir, crc, tags);
 }
 
 bool isDaemonRunning()

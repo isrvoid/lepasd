@@ -18,4 +18,10 @@ When new CRC is created:
   If it's wrong, remove '%s' and restart the daemon to retype.
 
 'tags' options:
-  FIXME
+  A minimal tag in '%s' consists of a single name:
+  @foo
+  It's equivalent to explicitly stated default options (version, length, encoding):
+  @foo v0 20 a
+  To change a password, increment the version (e.g. 'v1').
+  Possible encodings are: a - alphanumeric; n - numeric; s - with special characters
+  Any line not beginning with '@' is a comment. It's useful for adding info below a tag (e.g. login name).
