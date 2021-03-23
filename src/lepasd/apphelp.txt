@@ -11,7 +11,7 @@ Files (tags, crc) are stored in '%s'
 
 Choosing a password:
   A good password is strong and easy to remember: a made up sentence or combination of words.
-  Recommended length is at least 12 characters. There is no strength analysis - choose wisely. The length can't be 0.
+  Recommended length is at least 12 characters. There is no strength check - choose wisely.
 
 When new CRC is created:
   If the CRC seems unfamiliar, consider killing and restaring the daemon to verify the password.

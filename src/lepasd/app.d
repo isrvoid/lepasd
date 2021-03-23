@@ -171,7 +171,7 @@ retry:
 
         return;
     }
-    enforce(length > 0, "Password can't have 0 length.");
+    enforce(length > 0, "Empty password");
     enforce(length < buf.length, format!"Max password length: %d"(buf.length - 1));
     class GenWrapper
     {
