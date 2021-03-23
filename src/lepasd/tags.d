@@ -21,10 +21,11 @@ struct Tag
 
     enum Encoding
     {
-        base64,
-        alphanumeric
+        alphanumeric,
+        numeric,
+        specialChars
     }
-    auto type = Encoding.base64;
+    auto type = Encoding.alphanumeric;
 }
 
 auto parseOpt(R)(R rawOpt) pure
@@ -36,7 +37,7 @@ if (isSomeString!R)
     auto isSet = tuple!(bool, "ver", bool, "length", bool, "type");
     while (!tokens.empty)
     {
-        enum rOpt = ctRegex!`^v(\d+)$|^(\d+)$|^(a)$`;
+        enum rOpt = ctRegex!`^v(\d+)$|^(\d+)$|^([ans])$`;
         auto c = matchFirst(tokens.front, rOpt);
         if (c.empty)
             throw new Exception("Invalid option");
@@ -56,7 +57,8 @@ if (isSomeString!R)
         }
         else if (c[3])
         {
-            opt[2] = Tag.Encoding.alphanumeric;
+            enum lut = ['a': Tag.Encoding.alphanumeric, 'n': Tag.Encoding.numeric, 's': Tag.Encoding.specialChars];
+            opt[2] = lut[c[3][0]];
             isSet.type = true;
         }
 
@@ -85,12 +87,19 @@ unittest
     assert(expect == Tag("foo", parseOpt("16").expand));
 }
 
-@("alphanumeric option")
+@("encoding")
 unittest
 {
     auto expect = Tag("foo");
+
     expect.type = Tag.Encoding.alphanumeric;
     assert(expect == Tag("foo", parseOpt("a").expand));
+
+    expect.type = Tag.Encoding.numeric;
+    assert(expect == Tag("foo", parseOpt("n").expand));
+
+    expect.type = Tag.Encoding.specialChars;
+    assert(expect == Tag("foo", parseOpt("s").expand));
 }
 
 @("multiple options")
@@ -239,8 +248,10 @@ string toLine(Tag tag) pure nothrow
         opt ~= ' ';
     }
     if (tag.type != Tag.init.type)
-        opt ~= 'a';
-
+    {
+        enum lut = [Tag.Encoding.alphanumeric: 'a', Tag.Encoding.numeric: 'n', Tag.Encoding.specialChars: 's'];
+        opt ~= lut[tag.type];
+    }
     auto name = "@ " ~ tag.name;
     return opt.data ? name ~ ' ' ~ opt.data : name;
 }
@@ -248,11 +259,17 @@ string toLine(Tag tag) pure nothrow
 @("full tag")
 unittest
 {
-    assert("@ foo v1 16 a" == toLine(Tag("foo", 1, 16, Tag.Encoding.alphanumeric)));
+    assert("@ foo v1 16 n" == toLine(Tag("foo", 1, 16, Tag.Encoding.numeric)));
 }
 
 @("default values are not written")
 unittest
 {
     assert("@ foo" == toLine(Tag("foo")));
+}
+
+@("special chars option")
+unittest
+{
+    assert("@ foo 12 s" == toLine(Tag("foo", 0, 12, Tag.Encoding.specialChars)));
 }
