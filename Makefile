@@ -8,8 +8,8 @@ endif
 
 VPATH := src
 
-UNITTESTSRC := lepasd/tags.d
-LEPASDSRC := lepasd/app.d lepasd/hashgen.d lepasd/tags.d
+UNITTESTSRC := lepasd/tags.d lepasd/encoding.d
+LEPASDSRC := lepasd/app.d lepasd/hashgen.d lepasd/tags.d lepasd/encoding.d
 
 ARGON2DIR := third_party/argon2
 ARGON2TARGET := libargon2.a
