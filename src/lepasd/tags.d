@@ -5,6 +5,7 @@
 
 module lepasd.tags;
 
+import std.array : Appender;
 import std.range;
 import std.regex;
 import std.traits : isSomeString;
@@ -234,7 +235,6 @@ unittest
 
 string toLine(Tag tag) pure nothrow
 {
-    import std.array : Appender;
     Appender!string opt;
     if (tag.ver != Tag.init.ver)
     {
@@ -272,4 +272,51 @@ unittest
 unittest
 {
     assert("@ foo 12 s" == toLine(Tag("foo", 0, 12, Tag.Encoding.specialChars)));
+}
+
+void[] versionedTag(string name, uint vers) pure nothrow
+{
+    import std.bitmanip : nativeToBigEndian;
+    import std.algorithm : find;
+    Appender!(ubyte[]) app;
+    app ~= cast(const ubyte[]) name;
+    app ~= nativeToBigEndian(vers)[].find!"a != 0";
+    return app.data;
+}
+
+@("v0 has no effect")
+unittest
+{
+    assert("foo" == versionedTag("foo", 0));
+}
+
+@("non 0")
+unittest
+{
+    const ubyte[] expect = ['f', 'o', 'o', 1];
+    assert(expect == versionedTag("foo", 1));
+}
+
+@("max single byte version")
+unittest
+{
+    const ubyte[] expect = ['a', 0xff];
+    assert(expect == versionedTag("a", 0xff));
+}
+
+@("network byte order")
+unittest
+{
+    const ubyte[] expect = ['a', 0xaa, 0x55];
+    assert(expect == versionedTag("a", 0xaa55));
+}
+
+@("variable length")
+unittest
+{
+    ubyte[] expect = ['a', 1, 2, 3];
+    assert(expect == versionedTag("a", 0x010203));
+
+    expect = ['a', 0xf0, 0xe0, 0xd0, 0xc0];
+    assert(expect == versionedTag("a", 0xf0e0d0c0));
 }
