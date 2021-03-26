@@ -10,19 +10,27 @@ import std.utf : byChar;
 
 @safe:
 
-enum lutLength = 93;
-enum specialCount = lutLength - 26 * 2 - 10 * 2;
-enum special = "!#$%'()+,-:?@[]^_`{}~";
-static assert(special.length == specialCount);
-enum restrictedSpecial = "#$%?@^_".repeat(3).join;
-static assert(restrictedSpecial.length == specialCount);
-enum base10 = iota('0', char('9' + 1));
-enum base62 = chain(iota('A', char('Z' + 1)), iota('a', char('z' + 1)), base10);
 
-enum string lut = chain(base62, special.byChar, base10).array;
-static assert(lut.length == lutLength);
-enum string restrictedLut = chain(base62, restrictedSpecial.byChar, base10).array;
-static assert(restrictedLut.length == lutLength);
+struct SpecialChar
+{
+    enum length = Lut.specialLength - 26 * 2 - 10 * 2;
+    enum set = "!#$%'()+,-:?@[]^_`{}~";
+    static assert(set.length == length);
+    enum restrictedSet = "#$%?@^_".repeat(3).join;
+    static assert(restrictedSet.length == length);
+}
+
+struct Lut
+{
+    enum base10 = iota('0', char('9' + 1));
+    enum string base62 = chain(iota('A', char('Z' + 1)), iota('a', char('z' + 1)), base10).array;
+    static assert(base62.length == 62);
+    enum specialLength = 93;
+    enum string special = chain(base62.byChar, SpecialChar.set.byChar, base10).array;
+    static assert(special.length == specialLength);
+    enum string restrictedSpecial = chain(base62.byChar, SpecialChar.restrictedSet.byChar, base10).array;
+    static assert(restrictedSpecial.length == specialLength);
+}
 
 uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow
 in (width && width <= uint.sizeof * 8)
