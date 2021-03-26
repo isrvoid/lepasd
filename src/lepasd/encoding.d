@@ -24,6 +24,94 @@ static assert(lut.length == lutLength);
 enum string restrictedLut = chain(base62, restrictedSpecial.byChar, base10).array;
 static assert(restrictedLut.length == lutLength);
 
+uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow
+in (width && width <= uint.sizeof * 8)
+{
+    ulong clipBytes()
+    {
+        import std.bitmanip : bigEndianToNative;
+        const start = pos / 8;
+        const end = (pos + width - 1) / 8 + 1;
+        ubyte[8] clip;
+        clip[$ - (end - start) .. $] = a[start .. end];
+        return bigEndianToNative!ulong(clip);
+    }
+    const uint mask = cast(uint) (1UL << width) - 1;
+    const lastPos = pos + width - 1;
+    const byteLastPos = 7 - lastPos % 8;
+    return clipBytes >> byteLastPos & mask;
+}
+
+@("single bit")
+unittest
+{
+    assert(0 == bitWindow([0], 0, 1));
+    assert(1 == bitWindow([0x80], 0, 1));
+}
+
+@("bit at non 0 position")
+unittest
+{
+    assert(1 == bitWindow([0x40], 1, 1));
+    assert(1 == bitWindow([0x2], 6, 1));
+    assert(1 == bitWindow([0x1], 7, 1));
+}
+
+@("bit in second byte")
+unittest
+{
+    assert(1 == bitWindow([0, 0x80], 8, 1));
+}
+
+@("2 bits")
+unittest
+{
+    assert(0 == bitWindow([0], 0, 2));
+    assert(1 == bitWindow([0x40], 0, 2));
+    assert(2 == bitWindow([0x80], 0, 2));
+    assert(3 == bitWindow([0xc0], 0, 2));
+}
+
+@("2 bits at end")
+unittest
+{
+    assert(0 == bitWindow([0], 6, 2));
+    assert(1 == bitWindow([0x01], 6, 2));
+    assert(2 == bitWindow([0x02], 6, 2));
+    assert(3 == bitWindow([0x03], 6, 2));
+}
+
+@("2 bits over byte boundary")
+unittest
+{
+    assert(0 == bitWindow([0x00, 0x00], 7, 2));
+    assert(1 == bitWindow([0x00, 0x80], 7, 2));
+    assert(2 == bitWindow([0x01, 0x00], 7, 2));
+    assert(3 == bitWindow([0x01, 0x80], 7, 2));
+}
+
+@("out of window bits are ignored")
+unittest
+{
+    assert(0b1011 == bitWindow([0b11011111], 1, 4));
+}
+
+@("uint width")
+unittest
+{
+    assert(0 == bitWindow([0, 0, 0, 0], 0, 32));
+    assert(0x80000001 == bitWindow([0x80, 0, 0, 1], 0, 32));
+    assert(0x40000001 == bitWindow([0x40, 0, 0, 1], 0, 32));
+    assert(0x80000002 == bitWindow([0x80, 0, 0, 2], 0, 32));
+}
+
+@("uint width unaligned")
+unittest
+{
+    assert(0x40000001 == bitWindow([0x20, 0, 0, 0, 0x80], 1, 32));
+    assert(0x80000002 == bitWindow([1, 0, 0, 0, 4], 7, 32));
+}
+
 struct Bits
 {
     this(in ubyte[] _a, size_t _stepWidth)
@@ -36,16 +124,7 @@ struct Bits
 
     uint front() pure nothrow const
     {
-        // TODO refactor to use bit window
-        const stepEnd = pos + stepWidth;
-        uint result;
-        for (size_t i = 0; i < stepWidth; ++i)
-        {
-            const iPos = stepEnd - 1 - i;
-            const bool isSet = (a[iPos / 8] & 1 << 7 - iPos % 8) != 0;
-            result |= isSet << i;
-        }
-        return result;
+        return bitWindow(a, pos, stepWidth);
     }
 
     void popFront() pure nothrow
