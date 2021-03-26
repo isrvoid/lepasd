@@ -13,7 +13,9 @@
 
 static void setDummySalt(void* salt) {
     // There is no salt, because no password is ever stored. The fixed value avoids zeros.
-    const char s[] = "lepasd dummy salt";
+    // The seed for the salt is "dummy salt n",
+    // where 'n' is the largest Mersenne prime that fits into uint64_t (2**61 - 1).
+    const char s[] = "dummy salt 2305843009213693951";
     sha3(s, sizeof s - 1, salt, LEPASD_HASH_SIZE);
 }
 
