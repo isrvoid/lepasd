@@ -24,7 +24,8 @@ struct Tag
     {
         alphanumeric,
         numeric,
-        specialChars
+        specialChar,
+        restrictedSpecialChar
     }
     auto type = Encoding.alphanumeric;
 }
@@ -38,7 +39,7 @@ if (isSomeString!R)
     auto isSet = tuple!(bool, "ver", bool, "length", bool, "type");
     while (!tokens.empty)
     {
-        enum rOpt = ctRegex!`^v(\d+)$|^(\d+)$|^([ans])$`;
+        enum rOpt = ctRegex!`^v(\d+)$|^(\d+)$|^([anrs])$`;
         auto c = matchFirst(tokens.front, rOpt);
         if (c.empty)
             throw new Exception("Invalid option");
@@ -58,7 +59,8 @@ if (isSomeString!R)
         }
         else if (c[3])
         {
-            enum lut = ['a': Tag.Encoding.alphanumeric, 'n': Tag.Encoding.numeric, 's': Tag.Encoding.specialChars];
+            enum lut = ['a': Tag.Encoding.alphanumeric, 'n': Tag.Encoding.numeric,
+                     's': Tag.Encoding.specialChar, 'r': Tag.Encoding.restrictedSpecialChar];
             opt[2] = lut[c[3][0]];
             isSet.type = true;
         }
@@ -99,8 +101,11 @@ unittest
     expect.type = Tag.Encoding.numeric;
     assert(expect == Tag("foo", parseOpt("n").expand));
 
-    expect.type = Tag.Encoding.specialChars;
+    expect.type = Tag.Encoding.specialChar;
     assert(expect == Tag("foo", parseOpt("s").expand));
+
+    expect.type = Tag.Encoding.restrictedSpecialChar;
+    assert(expect == Tag("foo", parseOpt("r").expand));
 }
 
 @("multiple options")
@@ -249,7 +254,8 @@ string toLine(Tag tag) pure nothrow
     }
     if (tag.type != Tag.init.type)
     {
-        enum lut = [Tag.Encoding.alphanumeric: 'a', Tag.Encoding.numeric: 'n', Tag.Encoding.specialChars: 's'];
+        enum lut = [Tag.Encoding.alphanumeric: 'a', Tag.Encoding.numeric: 'n',
+                 Tag.Encoding.specialChar: 's', Tag.Encoding.restrictedSpecialChar: 'r'];
         opt ~= lut[tag.type];
     }
     auto name = "@ " ~ tag.name;
@@ -268,10 +274,16 @@ unittest
     assert("@ foo" == toLine(Tag("foo")));
 }
 
-@("special chars option")
+@("special characters option")
 unittest
 {
-    assert("@ foo 12 s" == toLine(Tag("foo", 0, 12, Tag.Encoding.specialChars)));
+    assert("@ foo 12 s" == toLine(Tag("foo", 0, 12, Tag.Encoding.specialChar)));
+}
+
+@("restricted special characters option")
+unittest
+{
+    assert("@ foo 12 r" == toLine(Tag("foo", 0, 12, Tag.Encoding.restrictedSpecialChar)));
 }
 
 void[] versionedTag(string name, uint vers) pure nothrow

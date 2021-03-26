@@ -16,8 +16,9 @@ struct SpecialChar
     enum length = Lut.specialLength - 26 * 2 - 10 * 2;
     enum set = "!#$%'()+,-:?@[]^_`{}~";
     static assert(set.length == length);
-    enum restrictedSet = "#$%?@^_".repeat(3).join;
-    static assert(restrictedSet.length == length);
+    enum restrictedSet = "#$%?@^_";
+    enum restricted = restrictedSet.repeat(3).join;
+    static assert(restricted.length == length);
 }
 
 struct Lut
@@ -28,7 +29,7 @@ struct Lut
     enum specialLength = 93;
     enum string special = chain(base62.byChar, SpecialChar.set.byChar, base10).array;
     static assert(special.length == specialLength);
-    enum string restrictedSpecial = chain(base62.byChar, SpecialChar.restrictedSet.byChar, base10).array;
+    enum string restrictedSpecial = chain(base62.byChar, SpecialChar.restricted.byChar, base10).array;
     static assert(restrictedSpecial.length == specialLength);
 }
 

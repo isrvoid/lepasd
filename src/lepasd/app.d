@@ -75,6 +75,7 @@ void main(string[] args)
 
 auto helpText()
 {
+    import lepasd.encoding : SpecialChar;
     enum
     {
         confDir = buildPath("~", relConfigDir),
@@ -82,7 +83,7 @@ auto helpText()
         tags = buildPath("~", relConfigDir, tagsBaseName),
         rawHelpFile = import("apphelp.txt")
     }
-    return format!rawHelpFile(10, "Ctrl twice", confDir, crc, tags);
+    return format!rawHelpFile(10, "Ctrl twice", confDir, crc, tags, SpecialChar.restrictedSet);
 }
 
 bool isDaemonRunning()

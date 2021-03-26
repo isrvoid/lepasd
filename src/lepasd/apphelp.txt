@@ -23,5 +23,5 @@ When new CRC is created:
   It's equivalent to explicitly stated default options (version, length, encoding):
   @foo v0 20 a
   To change a password, increment the version (e.g. 'v1').
-  Possible encodings are: a - alphanumeric; n - numeric; s - with special characters
+  Encoding: a - alphanumeric; n - numeric; s - with special characters; r - with special characters restricted to %s
   Any line not beginning with '@' is a comment. It's useful for adding info below a tag (e.g. login name).
