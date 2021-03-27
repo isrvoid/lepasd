@@ -34,7 +34,7 @@ struct Lut
     static assert(restrictedSpecial.length == specialLength);
 }
 
-uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow
+uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow @nogc
 in (width && width <= uint.sizeof * 8)
 {
     ulong clipBytes()
@@ -124,39 +124,36 @@ unittest
 
 struct Bits
 {
-    this(in ubyte[] _a, size_t _stepWidth) pure nothrow
+pure: nothrow: @nogc:
+
+    this(in ubyte[] _a, size_t _stepWidth)
     in (_stepWidth && _stepWidth <= uint.sizeof * 8)
     {
-        a = _a.dup;
+        a = _a;
         posEnd = a.length * 8;
         stepWidth = _stepWidth;
     }
 
-    ~this() pure
-    {
-        a[] = 0;
-    }
-
-    uint front() pure nothrow const
+    uint front() const
     {
         return bitWindow(a, pos, stepWidth);
     }
 
-    void popFront() pure nothrow
+    void popFront()
     in (!empty)
     {
         pos += stepWidth;
 
     }
 
-    bool empty() pure nothrow const
+    bool empty() const
     {
         return posEnd - pos < stepWidth;
     }
 
 private:
     size_t pos, posEnd, stepWidth;
-    ubyte[] a;
+    const (ubyte)[] a;
 }
 
 @("single bit")
@@ -274,80 +271,90 @@ unittest
     assert(0x5a8 >> 2 == bits.front());
 }
 
-string encodeBase10(in ubyte[] a, size_t length) pure
-in (length)
-{
-    import std.conv : to;
-    Appender!string app;
-    auto bits = Bits(a, 10);
-    while (!bits.empty && app.data.length < length)
-    {
-        const val = bits.front;
-        bits.popFront();
+enum hashSize = 64;
 
+enum MaxLength
+{
+    base10 = hashSize,
+    base62 = hashSize,
+    specialChar = hashSize * 3 / 4
+}
+
+auto encodeBase10(uint length = MaxLength.base10)(in ubyte[] a) pure nothrow @nogc
+if (length)
+{
+    enum tripletCount = length / 3 + (length % 3 != 0);
+    char[tripletCount * 3] temp;
+    scope(exit) temp[] = 0;
+    auto bits = Bits(a, 10);
+    for (int i = 0; i < temp.length;)
+    {
+        auto val = bits.front;
+        bits.popFront();
         if (val > 999)
             continue;
 
-        const tail = val.to!string;
-        foreach (_; 0 .. 3 - tail.length)
-            app ~= '0';
-        app ~= tail;
+        temp[i + 2] = cast(char) ('0' + val % 10);
+        val /= 10;
+        temp[i + 1] = cast(char) ('0' + val % 10);
+        temp[i] = cast(char) ('0' + val / 10);
+        i += 3;
     }
-    enforce(app.data.length >= length, "Invalid length");
-    return app.data[0 .. length];
+    char[length] result = temp[0 .. length];
+    return result;
 }
 
 @("single value")
 unittest
 {
-    assert("1" == encodeBase10([0x20, 0], 1));
+    assert("1" == encodeBase10!1([0x20, 0]));
+}
+
+@("two values")
+unittest
+{
+    assert("12" == encodeBase10!2([0x20, 0]));
 }
 
 @("leading zeroes")
 unittest
 {
-    assert("000" == encodeBase10([0, 0], 3));
-    assert("001" == encodeBase10([0, 0x40], 3));
-    assert("010" == encodeBase10([0x02, 0x80], 3));
+    assert("000" == encodeBase10!3([0, 0]));
+    assert("001" == encodeBase10!3([0, 0x40]));
+    assert("010" == encodeBase10!3([0x02, 0x80]));
 }
 
 @("within byte")
 unittest
 {
-    assert("128" == encodeBase10([0x20, 0], 3));
-    assert("255" == encodeBase10([0x3f, 0xc0], 3));
+    assert("128" == encodeBase10!3([0x20, 0]));
+    assert("255" == encodeBase10!3([0x3f, 0xc0]));
 }
 
 @("above byte")
 unittest
 {
-    assert("256" == encodeBase10([0x40, 0], 3));
-    assert("511" == encodeBase10([0x7f, 0xc0], 3));
+    assert("256" == encodeBase10!3([0x40, 0]));
+    assert("511" == encodeBase10!3([0x7f, 0xc0]));
 }
 
 @("max")
 unittest
 {
-    assert("999" == encodeBase10([0xf9, 0xc0], 3));
+    assert("999" == encodeBase10!3([0xf9, 0xc0]));
 }
 
 @("two tokens")
 unittest
 {
-    assert("000000" == encodeBase10([0, 0, 0], 6));
-    assert("999999" == encodeBase10([0xf9, 0xfe, 0x70], 6));
-}
-
-@("throws at insufficient data")
-unittest
-{
-    assertThrown(encodeBase10([0], 3));
-    assertThrown(encodeBase10([0, 0], 6));
+    assert("0000" == encodeBase10!4([0, 0, 0]));
+    assert("00000" == encodeBase10!5([0, 0, 0]));
+    assert("999999" == encodeBase10!6([0xf9, 0xfe, 0x70]));
 }
 
 @("values above 999 are skipped")
 unittest
 {
-    assertThrown(encodeBase10([0xfa, 0], 3));
-    assertThrown(encodeBase10([0xff, 0xff], 3));
+    assert("512" == encodeBase10!3([0xfa, 0x20, 0]));
+    assert("512" == encodeBase10!3([0xff, 0xe0, 0]));
 }
