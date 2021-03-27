@@ -280,37 +280,37 @@ enum MaxLength
     specialChar = hashSize * 3 / 4
 }
 
-auto encodeBase10(uint length = MaxLength.base10)(in ubyte[] a) pure nothrow @nogc
+auto encodeBase10(uint length = MaxLength.base10)(in ubyte[] hash) pure nothrow @nogc
 if (length)
 {
     enum tripletCount = length / 3 + (length % 3 != 0);
-    char[tripletCount * 3] temp;
-    scope(exit) temp[] = 0;
-    auto bits = Bits(a, 10);
-    for (int i = 0; i < temp.length;)
+    char[tripletCount * 3] a;
+    scope(exit) a[] = 0;
+    auto bits = Bits(hash, 10);
+    for (int i = 0; i < a.length;)
     {
         auto val = bits.front;
         bits.popFront();
         if (val > 999)
             continue;
 
-        temp[i + 2] = cast(char) ('0' + val % 10);
+        a[i + 2] = cast(char) ('0' + val % 10);
         val /= 10;
-        temp[i + 1] = cast(char) ('0' + val % 10);
-        temp[i] = cast(char) ('0' + val / 10);
+        a[i + 1] = cast(char) ('0' + val % 10);
+        a[i] = cast(char) ('0' + val / 10);
         i += 3;
     }
-    char[length] result = temp[0 .. length];
+    char[length] result = a[0 .. length];
     return result;
 }
 
-@("single value")
+@("single digit")
 unittest
 {
     assert("1" == encodeBase10!1([0x20, 0]));
 }
 
-@("two values")
+@("two digits")
 unittest
 {
     assert("12" == encodeBase10!2([0x20, 0]));
@@ -344,7 +344,7 @@ unittest
     assert("999" == encodeBase10!3([0xf9, 0xc0]));
 }
 
-@("two tokens")
+@("two triplets")
 unittest
 {
     assert("0000" == encodeBase10!4([0, 0, 0]));
@@ -357,4 +357,48 @@ unittest
 {
     assert("512" == encodeBase10!3([0xfa, 0x20, 0]));
     assert("512" == encodeBase10!3([0xff, 0xe0, 0]));
+}
+
+auto encodeBase62(uint length = MaxLength.base62)(in ubyte[] hash) pure nothrow @nogc
+if (length)
+{
+    char[length] result;
+    auto bits = Bits(hash, 6);
+    for (int i = 0; i < length;)
+    {
+        const val = bits.front;
+        bits.popFront();
+        if (val > 61)
+            continue;
+
+        result[i++] = Lut.base62[val];
+    }
+    return result;
+}
+
+@("single symbol")
+unittest
+{
+    assert("A" == encodeBase62!1([0]));
+}
+
+@("two symbols")
+unittest
+{
+    assert("BC" == encodeBase62!2([0x04, 0x20]));
+}
+
+@("max")
+unittest
+{
+    assert("9" == encodeBase62!1([0xf4]));
+    assert("99" == encodeBase62!2([0xf7, 0xd0]));
+}
+
+@("values above 61 are skipped")
+unittest
+{
+    const expect = Lut.base62[32 .. 33];
+    assert(expect == encodeBase62!1([0xfa, 0]));
+    assert(expect == encodeBase62!1([0xfe, 0]));
 }
