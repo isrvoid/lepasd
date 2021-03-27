@@ -5,11 +5,12 @@
 
 module lepasd.encoding;
 
+import std.array : Appender;
+import std.exception : enforce, assertThrown;
 import std.range;
 import std.utf : byChar;
 
 @safe:
-
 
 struct SpecialChar
 {
@@ -123,12 +124,17 @@ unittest
 
 struct Bits
 {
-    this(in ubyte[] _a, size_t _stepWidth)
+    this(in ubyte[] _a, size_t _stepWidth) pure nothrow
     in (_stepWidth && _stepWidth <= uint.sizeof * 8)
     {
         a = _a.dup;
         posEnd = a.length * 8;
         stepWidth = _stepWidth;
+    }
+
+    ~this() pure
+    {
+        a[] = 0;
     }
 
     uint front() pure nothrow const
@@ -266,4 +272,82 @@ unittest
     assert(0x101 == bits.front);
     bits.popFront();
     assert(0x5a8 >> 2 == bits.front());
+}
+
+string encodeBase10(in ubyte[] a, size_t length) pure
+in (length)
+{
+    import std.conv : to;
+    Appender!string app;
+    auto bits = Bits(a, 10);
+    while (!bits.empty && app.data.length < length)
+    {
+        const val = bits.front;
+        bits.popFront();
+
+        if (val > 999)
+            continue;
+
+        const tail = val.to!string;
+        foreach (_; 0 .. 3 - tail.length)
+            app ~= '0';
+        app ~= tail;
+    }
+    enforce(app.data.length >= length, "Invalid length");
+    return app.data[0 .. length];
+}
+
+@("single value")
+unittest
+{
+    assert("1" == encodeBase10([0x20, 0], 1));
+}
+
+@("leading zeroes")
+unittest
+{
+    assert("000" == encodeBase10([0, 0], 3));
+    assert("001" == encodeBase10([0, 0x40], 3));
+    assert("010" == encodeBase10([0x02, 0x80], 3));
+}
+
+@("within byte")
+unittest
+{
+    assert("128" == encodeBase10([0x20, 0], 3));
+    assert("255" == encodeBase10([0x3f, 0xc0], 3));
+}
+
+@("above byte")
+unittest
+{
+    assert("256" == encodeBase10([0x40, 0], 3));
+    assert("511" == encodeBase10([0x7f, 0xc0], 3));
+}
+
+@("max")
+unittest
+{
+    assert("999" == encodeBase10([0xf9, 0xc0], 3));
+}
+
+@("two tokens")
+unittest
+{
+    assert("000000" == encodeBase10([0, 0, 0], 6));
+    assert("999999" == encodeBase10([0xf9, 0xfe, 0x70], 6));
+}
+
+@("throws at insufficient data")
+unittest
+{
+    assertThrown(encodeBase10([0], 3));
+    assertThrown(encodeBase10([0, 0], 6));
+}
+
+@("values above 999 are skipped")
+unittest
+{
+    assertThrown(encodeBase10([0xfa, 0], 3));
+    assertThrown(encodeBase10([0xff, 0xff], 3));
 }
