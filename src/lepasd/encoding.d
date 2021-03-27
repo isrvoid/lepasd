@@ -14,7 +14,7 @@ import std.utf : byChar;
 
 struct SpecialChar
 {
-    enum length = Lut.specialLength - 26 * 2 - 10 * 2;
+    enum length = Lut.special.length - 26 * 2 - 10 * 2;
     enum set = "!#$%'()+,-:?@[]^_`{}~";
     static assert(set.length == length);
     enum restrictedSet = "#$%?@^_";
@@ -27,11 +27,10 @@ struct Lut
     enum base10 = iota('0', char('9' + 1));
     enum string base62 = chain(iota('A', char('Z' + 1)), iota('a', char('z' + 1)), base10).array;
     static assert(base62.length == 62);
-    enum specialLength = 93;
     enum string special = chain(base62.byChar, SpecialChar.set.byChar, base10).array;
-    static assert(special.length == specialLength);
+    static assert(special.length == 93);
     enum string restrictedSpecial = chain(base62.byChar, SpecialChar.restricted.byChar, base10).array;
-    static assert(restrictedSpecial.length == specialLength);
+    static assert(restrictedSpecial.length == special.length);
 }
 
 uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow @nogc
@@ -287,7 +286,7 @@ if (length)
     char[tripletCount * 3] a;
     scope(exit) a[] = 0;
     auto bits = Bits(hash, 10);
-    for (int i = 0; i < a.length;)
+    for (uint i = 0; i < a.length;)
     {
         auto val = bits.front;
         bits.popFront();
@@ -355,8 +354,9 @@ unittest
 @("values above 999 are skipped")
 unittest
 {
-    assert("512" == encodeBase10!3([0xfa, 0x20, 0]));
-    assert("512" == encodeBase10!3([0xff, 0xe0, 0]));
+    // 1000 == 0b1111101000
+    assert("000" == encodeBase10!3([0xfa, 0x00, 0]));
+    assert("000" == encodeBase10!3([0xff, 0xc0, 0]));
 }
 
 auto encodeBase62(uint length = MaxLength.base62)(in ubyte[] hash) pure nothrow @nogc
@@ -364,7 +364,7 @@ if (length)
 {
     char[length] result;
     auto bits = Bits(hash, 6);
-    for (int i = 0; i < length;)
+    for (uint i = 0; i < length;)
     {
         const val = bits.front;
         bits.popFront();
@@ -398,7 +398,50 @@ unittest
 @("values above 61 are skipped")
 unittest
 {
-    const expect = Lut.base62[32 .. 33];
-    assert(expect == encodeBase62!1([0xfa, 0]));
-    assert(expect == encodeBase62!1([0xfe, 0]));
+    assert("A" == encodeBase62!1([0xf8, 0]));
+    assert("A" == encodeBase62!1([0xfc, 0]));
+}
+
+auto encodeBase1023(uint length = MaxLength.specialChar)(in ubyte[] hash, string lut = Lut.special) pure nothrow @nogc
+if (0 == 1023 % Lut.special.length)
+in (lut.length == Lut.special.length)
+{
+    char[length] result;
+    auto bits = Bits(hash, 10);
+    for (uint i = 0; i < length;)
+    {
+        const val = bits.front;
+        bits.popFront();
+        if (val > 1022)
+            continue;
+
+        result[i++] = lut[val % lut.length];
+    }
+    return result;
+}
+
+@("single symbol")
+unittest
+{
+    assert("A" == encodeBase1023!1([0, 0]));
+}
+
+@("two symbols")
+unittest
+{
+    assert("BC" == encodeBase1023!2([0, 0x40, 0x20]));
+}
+
+@("max")
+unittest
+{
+    assert("9" == encodeBase1023!1([0xff, 0x80]));
+    assert("99" == encodeBase1023!2([0xff, 0xbf, 0xe0]));
+}
+
+@("1023 is skipped")
+unittest
+{
+    const expect = Lut.special[32 .. 33];
+    assert(expect == encodeBase1023!1([0xff, 0xc2, 0]));
 }
