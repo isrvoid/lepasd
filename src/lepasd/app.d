@@ -22,8 +22,8 @@ void main(string[] args)
     bool isAddTag, isTagLine;
     auto opt = getopt(args,
             config.passThrough,
-            "add|a", "Add new tag to '" ~ tagsBaseName ~ "'.", &isAddTag,
-            "tag|t", "Use tag ignoring '" ~ tagsBaseName ~ "'; for one-off use.", &isTagLine
+            "add|a", "Add new tag to '" ~ BaseName.tags ~ "'.", &isAddTag,
+            "tag|t", "Use tag ignoring '" ~ BaseName.tags ~ "'; for one-off use.", &isTagLine
             );
 
     if (opt.helpWanted)
@@ -79,20 +79,20 @@ auto helpText()
     enum
     {
         confDir = buildPath("~", relConfigDir),
-        crc = buildPath("~", relConfigDir, crcBaseName),
-        tags = buildPath("~", relConfigDir, tagsBaseName),
+        crc = buildPath("~", relConfigDir, BaseName.crc),
+        tags = buildPath("~", relConfigDir, BaseName.tags),
         rawHelpFile = import("apphelp.txt")
     }
-    return format!rawHelpFile(10, "Ctrl twice", confDir, crc, tags, SpecialChar.restrictedSet);
+    return format!rawHelpFile(confDir, triggerPath, crc, tags, SpecialChar.restrictedSet);
 }
 
 bool isDaemonRunning()
 {
     try
     {
-        const sPid = buildPath(tempDir(), "lepasd", "pid").readText.strip;
+        const sPid = buildPath(tempDir(), appName, BaseName.pid).readText.strip;
         const processName = buildPath("/proc", sPid, "comm").readText.strip;
-        return processName == "lepasd";
+        return processName == appName;
     }
     catch (Exception)
         return false;
@@ -104,19 +104,26 @@ Tag parseTag(string[] args) @safe
     return Tag(args[0], args[1 .. $].join(" ").parseOpt.expand);
 }
 
-enum relConfigDir = buildPath(".config", "lepasd");
-enum tagsBaseName = "tags";
-enum crcBaseName = "crc";
+enum appName = "lepasd";
+enum relConfigDir = buildPath(".config", appName);
+enum BaseName : string
+{
+    crc = "crc",
+    pid = "pid",
+    tags = "tags",
+    trigger = "trigger"
+}
 const string configDir;
-const string tagsPath, crcPath;
+const string tagsPath, crcPath, triggerPath;
 static this()
 {
     import std.process : environment;
     const home = environment.get("HOME");
     enforce(home, "HOME not set");
     configDir = buildPath(home, relConfigDir);
-    tagsPath = buildPath(configDir, tagsBaseName);
-    crcPath = buildPath(configDir, crcBaseName);
+    tagsPath = buildPath(configDir, BaseName.tags);
+    crcPath = buildPath(configDir, BaseName.crc);
+    triggerPath = buildPath(tempDir(), appName, BaseName.trigger);
 }
 
 auto loadTag(string name)

@@ -5,9 +5,14 @@ Usage:
   $ lepasd
   Assuming lepasd/tags has '@sometag', arm typing:
   $ lepasd sometag
-  Within %d s select the password field and press %s to type out the password.
+  Within 10 s select the password field and press the configured key to type out the password.
 
 Files (tags, crc) are stored in '%s'
+
+Configure trigger key:
+  E.g. using 'xbindkeys', add 2 lines to '~/.xbindkeysrc':
+  "echo 1 > %s"
+    Control + Right
 
 Choosing a password:
   A good password is strong and easy to remember: a made up sentence or combination of words.
