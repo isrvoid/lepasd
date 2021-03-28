@@ -16,6 +16,9 @@ import std.string : strip;
 
 import lepasd.tags;
 
+extern (C) int daemon(int, int);
+extern (C) int mkfifo(const char*, uint);
+
 void main(string[] args)
 {
     import std.getopt;
@@ -60,7 +63,7 @@ void main(string[] args)
         if (!isStartDaemon)
             writeln("daemon not running");
 
-        runDaemon();
+        startDaemon();
         return;
     }
 
@@ -73,24 +76,21 @@ void main(string[] args)
     sendTag(tag);
 }
 
+enum tagsHelpPath = buildPath("~", relConfigDir, BaseName.tags);
 auto helpText()
 {
     import lepasd.encoding : SpecialChar;
-    enum
-    {
-        confDir = buildPath("~", relConfigDir),
-        crc = buildPath("~", relConfigDir, BaseName.crc),
-        tags = buildPath("~", relConfigDir, BaseName.tags),
-        rawHelpFile = import("apphelp.txt")
-    }
-    return format!rawHelpFile(confDir, triggerPath, crc, tags, SpecialChar.restrictedSet);
+    enum confDir = buildPath("~", relConfigDir);
+    enum crc = buildPath("~", relConfigDir, BaseName.crc);
+    enum rawHelpFile = import("apphelp.txt");
+    return format!rawHelpFile(confDir, path.trigger, crc, tagsHelpPath, SpecialChar.restrictedSet);
 }
 
 bool isDaemonRunning()
 {
     try
     {
-        const sPid = buildPath(tempDir(), appName, BaseName.pid).readText.strip;
+        const sPid = path.pid.readText.strip;
         const processName = buildPath("/proc", sPid, "comm").readText.strip;
         return processName == appName;
     }
@@ -108,29 +108,39 @@ enum appName = "lepasd";
 enum relConfigDir = buildPath(".config", appName);
 enum BaseName : string
 {
+    tags = "tags",
     crc = "crc",
     pid = "pid",
-    tags = "tags",
+    tagInput = "tag",
     trigger = "trigger"
 }
-const string configDir;
-const string tagsPath, crcPath, triggerPath;
+
+const string configDir, tempFileDir;
+struct Path
+{
+    string tags, crc, pid, tagInput, trigger;
+}
+const Path path;
+
 static this()
 {
     import std.process : environment;
     const home = environment.get("HOME");
     enforce(home, "HOME not set");
     configDir = buildPath(home, relConfigDir);
-    tagsPath = buildPath(configDir, BaseName.tags);
-    crcPath = buildPath(configDir, BaseName.crc);
-    triggerPath = buildPath(tempDir(), appName, BaseName.trigger);
+    tempFileDir = buildPath(tempDir(), appName);
+    path.tags = buildPath(configDir, BaseName.tags);
+    path.crc = buildPath(configDir, BaseName.crc);
+    path.pid = buildPath(tempFileDir, BaseName.pid);
+    path.tagInput = buildPath(tempFileDir, BaseName.tagInput);
+    path.trigger = buildPath(tempFileDir, BaseName.trigger);
 }
 
 auto loadTag(string name)
 {
-    auto file = File(tagsPath, "r");
+    auto file = File(path.tags, "r");
     auto search = (() => file.byLine.findTag(name))();
-    enforce(!search.isNull, format!"Tag '%s' not found in '%s'"(name, tagsPath));
+    enforce(!search.isNull, format!"Tag '%s' not found in '%s'"(name, tagsHelpPath));
     return search.get;
 }
 
@@ -139,10 +149,10 @@ void writeNewTag(Tag tag)
     if (!exists(configDir))
         mkdirRecurse(configDir);
 
-    auto file = File(tagsPath, "a+");
+    auto file = File(path.tags, "a+");
     const isFileEmpty = !file.size;
     auto isNewTag = () => isFileEmpty || file.byLine.findTag(tag.name).isNull;
-    enforce(isNewTag(), format!"Tag '%s' already exists in '%s'"(tag.name, tagsPath));
+    enforce(isNewTag(), format!"Tag '%s' already exists in '%s'"(tag.name, tagsHelpPath));
     if (!isFileEmpty)
         file.writeln();
     file.writeln(tag.toLine);
@@ -157,7 +167,7 @@ void sendTag(Tag tag)
 
 extern (C) int lepasd_getpassword(void*, size_t) @nogc;
 
-void runDaemon()
+void startDaemon()
 {
     import std.exception : ErrnoException;
     import std.stdio : write;
@@ -202,8 +212,32 @@ retry:
         goto retry;
     }
 
-    writeln("starting daemon");
+    const err = daemon(0, 0);
+    if (err)
+        return;
+
+    createTempFiles();
+    daemonLoop();
+}
+
+void createTempFiles()
+{
+    import std.process : thisProcessID;
+    import std.conv : octal, to;
+    import std.string : toStringz;
+    try
+        mkdir(tempFileDir);
+    catch(Exception) { }
+    std.file.write(path.pid, thisProcessID().to!string ~ '\n');
+    mkfifo(path.tagInput.toStringz, octal!622);
+    mkfifo(path.trigger.toStringz, octal!622);
+}
+
+void daemonLoop()
+{
     // FIXME
+    import core.thread;
+    Thread.sleep(dur!"seconds"(10));
 }
 
 Nullable!string loadCrc() nothrow
@@ -211,7 +245,7 @@ Nullable!string loadCrc() nothrow
     import std.algorithm : map;
     import std.ascii : toUpper;
     try
-        return Nullable!string(readText(crcPath).strip.map!(a => cast(char) a.toUpper).array);
+        return Nullable!string(readText(path.crc).strip.map!(a => cast(char) a.toUpper).array);
     catch (Exception)
         return Nullable!string();
 }
@@ -222,7 +256,7 @@ void storeCrc(string s)
         mkdirRecurse(configDir);
 
     {
-        auto file = File(crcPath, "w");
+        auto file = File(path.crc, "w");
         file.rawWrite(s);
         file.writeln();
     }
