@@ -187,17 +187,23 @@ unittest
     assert(bits.empty);
 }
 
-@("empty step width 1")
+@("not empty at last element")
 unittest
 {
     auto bits = Bits([0], 1);
     bits.popFrontN(7);
     assert(!bits.empty);
-    bits.popFront();
+}
+
+@("empty after last element")
+unittest
+{
+    auto bits = Bits([0, 0], 1);
+    bits.popFrontN(16);
     assert(bits.empty);
 }
 
-@("width with 1 bit is empty")
+@("window containing 1 bit is empty")
 unittest
 {
     auto bits = Bits([0, 0], 3);
@@ -207,7 +213,7 @@ unittest
     assert(bits.empty);
 }
 
-@("width missing 1 bit is empty")
+@("window missing 1 bit is empty")
 unittest
 {
     auto bits = Bits([0], 3);
