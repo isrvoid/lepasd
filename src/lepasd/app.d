@@ -155,8 +155,6 @@ void runDaemon()
     import std.exception : ErrnoException;
     import std.stdio : write;
     import std.digest.crc : crc32Of, crcHexString;
-    // FIXME this has to work without input group; extract interface; use external tool
-    enforce(canReadKeyboard(), "Failed to open keyboard. Not 'input' group member?");
 
     char[257] buf;
     scope(exit) buf[] = 0;
@@ -199,25 +197,6 @@ retry:
 
     writeln("starting daemon");
     // FIXME
-}
-
-// FIXME to be removed
-bool canReadKeyboard()
-{
-    import std.algorithm : endsWith;
-    foreach (string name; dirEntries("/dev/input/by-id", SpanMode.breadth))
-        if (name.endsWith("kbd"))
-        {
-            try
-            {
-                File(name, "rb");
-                return true;
-            }
-            catch (Exception)
-                return false;
-        }
-
-    throw new Exception("No keyboard found");
 }
 
 Nullable!string loadCrc() nothrow
