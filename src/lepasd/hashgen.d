@@ -18,19 +18,20 @@ extern (C)
 
 struct HashGen
 {
+@nogc:
     this() @disable;
 
-    this(char[] password) @trusted @nogc
+    this(char[] password) @trusted
     {
         lepasd_init(&password[0], cast(uint) password.length, &c[0]);
     }
 
-    ~this() @nogc
+    ~this()
     {
         c[] = 0;
     }
 
-    auto hash(const void[] tag) @trusted @nogc
+    auto hash(const void[] tag) @trusted
     {
         ubyte[LEPASD_HASH_SIZE] h;
         lepasd_hash(&c[0], &tag[0], tag.length, &h[0]);

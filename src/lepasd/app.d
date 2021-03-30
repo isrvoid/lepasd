@@ -15,6 +15,7 @@ import std.typecons : Nullable;
 import std.string : strip;
 
 import lepasd.tags;
+import lepasd.hashgen;
 
 extern (C) int daemon(int, int);
 extern (C) int mkfifo(const char*, uint);
@@ -74,6 +75,7 @@ void main(string[] args)
         tag = loadTag(args[0]);
 
     sendTag(tag);
+    writeln("armed");
 }
 
 enum tagsHelpPath = buildPath("~", relConfigDir, BaseName.tags);
@@ -159,10 +161,28 @@ void writeNewTag(Tag tag)
     writeln("tag added");
 }
 
-void sendTag(Tag tag)
+void sendTag(Tag tag) @safe
 {
-    // FIXME
-    writeln("armed");
+    auto f = File(path.tagInput, "wb");
+    f.rawWrite([cast(uint) tag.name.length]);
+    f.rawWrite(tag.name);
+    tag.name = null;
+    f.rawWrite([tag]);
+}
+
+Tag recvTag() @trusted
+{
+    import core.stdc.stdio : fread;
+    auto f = File(path.tagInput, "rb");
+    auto fp = f.getFP();
+    uint nl;
+    enforce(1 == fread(&nl, nl.sizeof, 1, fp));
+    auto name = new char[](nl);
+    enforce(nl == fread(&name[0], 1, nl, fp));
+    Tag result;
+    enforce(1 == fread(&result, result.sizeof, 1, fp));
+    result.name = name.idup;
+    return result;
 }
 
 extern (C) int lepasd_getpassword(void*, size_t) @nogc;
@@ -189,19 +209,8 @@ retry:
     }
     enforce(length > 0, "Empty password");
     enforce(length < buf.length, format!"Max password length: %d"(buf.length - 1));
-    class GenWrapper
-    {
-        import lepasd.hashgen;
-        HashGen m;
-        alias m this;
-        this(char[] pw)
-        {
-            m = HashGen(pw);
-        }
-    }
-    auto gen = new GenWrapper(buf[0 .. length]);
-    scope(exit) gen.m.destroy!false();
 
+    auto gen = HashGen(buf[0 .. length]);
     const crc = gen.hash("CRC-32").crc32Of.crcHexString;
     const refCrc = loadCrc();
     if (refCrc.isNull)
@@ -217,7 +226,7 @@ retry:
         return;
 
     createTempFiles();
-    daemonLoop();
+    daemonLoop(gen);
 }
 
 void createTempFiles()
@@ -233,11 +242,12 @@ void createTempFiles()
     mkfifo(path.trigger.toStringz, octal!622);
 }
 
-void daemonLoop()
+void daemonLoop(ref HashGen gen)
 {
-    // FIXME
-    import core.thread;
-    Thread.sleep(dur!"seconds"(10));
+    while (true)
+    {
+        auto tag = recvTag();
+    }
 }
 
 Nullable!string loadCrc() nothrow
