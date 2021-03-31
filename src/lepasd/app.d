@@ -12,7 +12,7 @@ import std.file;
 import std.stdio : File, writeln;
 import std.format : format;
 import std.typecons : Nullable;
-import std.string : strip;
+import std.string : strip, toStringz;
 
 import lepasd.tags;
 import lepasd.hashgen;
@@ -185,7 +185,13 @@ Tag recvTag() @trusted
     return result;
 }
 
-extern (C) int lepasd_getpassword(void*, size_t) @nogc;
+
+extern (C)
+{
+    int lepasd_getPassword(void*, size_t) @nogc;
+    int lepasd_clearPipe(const char*) @nogc;
+    ptrdiff_t lepasd_readPipe(const char*, void*, size_t, size_t) @nogc;
+}
 
 void startDaemon()
 {
@@ -197,7 +203,7 @@ void startDaemon()
     scope(exit) buf[] = 0;
 retry:
     write("Password: ");
-    const length = lepasd_getpassword(&buf[0], buf.length);
+    const length = lepasd_getPassword(&buf[0], buf.length);
     writeln();
     if (length == -1)
     {
@@ -226,6 +232,7 @@ retry:
         return;
 
     createTempFiles();
+    enforce(!lepasd_clearPipe(path.tagInput.toStringz));
     daemonLoop(gen);
 }
 
@@ -233,7 +240,6 @@ void createTempFiles()
 {
     import std.process : thisProcessID;
     import std.conv : octal, to;
-    import std.string : toStringz;
     try
         mkdir(tempFileDir);
     catch(Exception) { }
@@ -244,9 +250,15 @@ void createTempFiles()
 
 void daemonLoop(ref HashGen gen)
 {
+    enum armedDuration = 10;
+    const triggerPath = path.trigger.toStringz;
     while (true)
     {
         auto tag = recvTag();
+        enforce(!lepasd_clearPipe(triggerPath));
+        char[32] buf;
+        const read = lepasd_readPipe(triggerPath, &buf[0], buf.sizeof, armedDuration * 1000);
+        enforce(read != -1);
     }
 }
 
