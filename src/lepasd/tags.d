@@ -18,7 +18,7 @@ struct Tag
 {
     string name;
     uint ver;
-    ubyte length = 20;
+    ubyte length = 24;
 
     enum Encoding
     {
