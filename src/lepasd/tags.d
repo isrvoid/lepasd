@@ -243,23 +243,23 @@ string toLine(Tag tag) pure nothrow
     Appender!string opt;
     if (tag.ver != Tag.init.ver)
     {
+        opt ~= ' ';
         opt ~= 'v';
         opt ~= tag.ver.to!string;
-        opt ~= ' ';
     }
     if (tag.length != Tag.init.length)
     {
-        opt ~= tag.length.to!string;
         opt ~= ' ';
+        opt ~= tag.length.to!string;
     }
     if (tag.type != Tag.init.type)
     {
         enum lut = [Tag.Encoding.alphanumeric: 'a', Tag.Encoding.numeric: 'n',
                  Tag.Encoding.specialChar: 's', Tag.Encoding.restrictedSpecialChar: 'r'];
+        opt ~= ' ';
         opt ~= lut[tag.type];
     }
-    auto name = "@ " ~ tag.name;
-    return opt.data ? name ~ ' ' ~ opt.data : name;
+    return "@ " ~ tag.name ~ opt.data;
 }
 
 @("full tag")
@@ -284,6 +284,18 @@ unittest
 unittest
 {
     assert("@ foo 12 r" == toLine(Tag("foo", 0, 12, Tag.Encoding.restrictedSpecialChar)));
+}
+
+@("version has no trailing space")
+unittest
+{
+    assert("@ foo v42" == toLine(Tag("foo", 42)));
+}
+
+@("length has no trailing space")
+unittest
+{
+    assert("@ foo 8" == toLine(Tag("foo", 0, 8)));
 }
 
 void[] versionedTag(string name, uint vers) pure nothrow
