@@ -18,7 +18,7 @@ struct Tag
 {
     string name;
     uint ver;
-    ubyte length = 24;
+    uint length = 24;
 
     enum Encoding
     {
@@ -54,7 +54,7 @@ if (isSomeString!R)
         }
         else if (c[2])
         {
-            opt[1] = cast(ubyte) c[2].to!uint;
+            opt[1] = c[2].to!uint;
             isSet.length = true;
         }
         else if (c[3])
@@ -140,6 +140,12 @@ unittest
 
     // version truncated
     assertThrown(parseOpt("v 20"));
+
+    // negative length
+    assertThrown(parseOpt("-1"));
+
+    // length above length.max
+    assertThrown(parseOpt(to!string(Tag.length.max + 1uL)));
 }
 
 @("ignores whitespace")
@@ -298,13 +304,13 @@ unittest
     assert("@ foo 8" == toLine(Tag("foo", 0, 8)));
 }
 
-void[] versionedTag(string name, uint vers) pure nothrow
+void[] versionedTag(string name, uint ver) pure nothrow
 {
     import std.bitmanip : nativeToBigEndian;
     import std.algorithm : find;
     Appender!(ubyte[]) app;
     app ~= cast(const ubyte[]) name;
-    app ~= nativeToBigEndian(vers)[].find!"a != 0";
+    app ~= nativeToBigEndian(ver)[].find!"a != 0";
     return app.data;
 }
 
