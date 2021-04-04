@@ -14,8 +14,9 @@ import std.format : format;
 import std.typecons : Nullable;
 import std.string : strip, toStringz;
 
-import lepasd.tags;
+import lepasd.encoding;
 import lepasd.hashgen;
+import lepasd.tags;
 
 extern (C) int daemon(int, int);
 extern (C) int mkfifo(const char*, uint);
@@ -42,11 +43,12 @@ void main(string[] args)
     if (isAddTag || isTagLine)
     {
         tag = parseTag(args);
-        args.length = 0;
+        args = null;
     }
 
     if (isAddTag)
     {
+        checkLength(tag);
         writeNewTag(tag);
         if (!isTagLine)
             return;
@@ -74,6 +76,7 @@ void main(string[] args)
     if (args.length)
         tag = loadTag(args[0]);
 
+    checkLength(tag);
     sendTag(tag);
     writeln("armed");
 }
@@ -81,7 +84,6 @@ void main(string[] args)
 enum tagsHelpPath = buildPath("~", relConfigDir, BaseName.tags);
 auto helpText()
 {
-    import lepasd.encoding : SpecialChar;
     enum confDir = buildPath("~", relConfigDir);
     enum crc = buildPath("~", relConfigDir, BaseName.crc);
     enum rawHelpFile = import("apphelp.txt");
@@ -104,6 +106,28 @@ Tag parseTag(string[] args) @safe
 {
     enforce(args.length, "Missing tag argument");
     return Tag(args[0], args[1 .. $].join(" ").parseOpt.expand);
+}
+
+void checkLength(in Tag tag) pure @safe
+{
+    enum minLength = 4;
+    uint maxLength;
+    final switch (tag.type)
+    {
+        case Tag.Encoding.numeric:
+            maxLength = MaxLength.base10;
+            break;
+        case Tag.Encoding.alphanumeric:
+            maxLength = MaxLength.base62;
+            break;
+        case Tag.Encoding.specialChar:
+        case Tag.Encoding.restrictedSpecialChar:
+            maxLength = MaxLength.specialChar;
+            break;
+    }
+    const isValidLength = tag.length >= minLength && tag.length <= maxLength;
+    enforce(isValidLength, format!"Length '%d' is out valid [%d, %d] for '%s' type"(
+            tag.length, minLength, maxLength, tag.type));
 }
 
 enum appName = "lepasd";
