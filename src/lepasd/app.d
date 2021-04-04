@@ -139,13 +139,14 @@ enum BaseName : string
     crc = "crc",
     pid = "pid",
     tagInput = "tag",
-    trigger = "trigger"
+    trigger = "trigger",
+    error = "error"
 }
 
 const string configDir, tempFileDir;
 struct Path
 {
-    string tags, crc, pid, tagInput, trigger;
+    string tags, crc, pid, tagInput, trigger, error;
 }
 const Path path;
 
@@ -161,6 +162,7 @@ static this()
     path.pid = buildPath(tempFileDir, BaseName.pid);
     path.tagInput = buildPath(tempFileDir, BaseName.tagInput);
     path.trigger = buildPath(tempFileDir, BaseName.trigger);
+    path.error = buildPath(tempFileDir, BaseName.error);
 }
 
 auto loadTag(string name)
@@ -255,10 +257,18 @@ retry:
     if (err)
         return;
 
-    createTempFiles();
-    enforce(!lepasd_clearPipe(path.tagInput.toStringz));
-    auto sk = SwKeyboard(0);
-    daemonLoop(gen, sk);
+    try
+    {
+        createTempFiles();
+        enforce(!lepasd_clearPipe(path.tagInput.toStringz));
+        auto sk = SwKeyboard(0);
+        daemonLoop(gen, sk);
+    }
+    catch (Throwable e)
+    {
+        File(path.error, "w").writeln(e);
+        assert(0);
+    }
 }
 
 void createTempFiles()
