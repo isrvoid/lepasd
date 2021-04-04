@@ -286,6 +286,7 @@ void createTempFiles()
 void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
 {
     import core.time : dur, Duration;
+    import core.thread : Thread;
     bool recvTrigger(Duration timeout)
     {
         const triggerPath = path.trigger.toStringz;
@@ -332,6 +333,7 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
         if (!recvTrigger(armedDuration))
             continue;
 
+        Thread.sleep(dur!"msecs"(600)); // allow time to release any modifier keys
         encodeAndType(tag);
     }
 }
