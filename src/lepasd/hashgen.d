@@ -31,7 +31,7 @@ struct HashGen
         c[] = 0;
     }
 
-    auto hash(const void[] tag) @trusted
+    auto hash(const void[] tag) const @trusted
     {
         ubyte[LEPASD_HASH_SIZE] h;
         lepasd_hash(&c[0], &tag[0], tag.length, &h[0]);

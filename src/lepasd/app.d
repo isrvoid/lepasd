@@ -257,7 +257,28 @@ retry:
 
     createTempFiles();
     enforce(!lepasd_clearPipe(path.tagInput.toStringz));
-    daemonLoop(gen);
+    auto vk = VrKeyboard(0);
+    daemonLoop(gen, vk);
+}
+
+struct VrKeyboard
+{
+    this() @disable;
+    // FIXME
+    this(int)
+    {
+    }
+
+    ~this()
+    {
+        //close(fd);
+    }
+
+    void write(in char[] s) const
+    {
+    }
+
+    private int fd;
 }
 
 void createTempFiles()
@@ -272,17 +293,56 @@ void createTempFiles()
     mkfifo(path.trigger.toStringz, octal!622);
 }
 
-void daemonLoop(ref HashGen gen)
+void daemonLoop(in ref HashGen gen, in ref VrKeyboard vk)
 {
-    enum armedDuration = 10;
-    const triggerPath = path.trigger.toStringz;
+    import core.time : dur, Duration;
+    bool recvTrigger(Duration timeout)
+    {
+        const triggerPath = path.trigger.toStringz;
+        enforce(!lepasd_clearPipe(triggerPath));
+        char[32] buf;
+        const length = lepasd_readPipe(triggerPath, &buf[0], buf.sizeof, timeout.total!"msecs");
+        enforce(length != -1);
+        return length && (buf[0] == 1 || buf[0] == '1');
+    }
+
+    void encodeAndType(Tag tag)
+    {
+        auto hash = gen.hash(versionedTag(tag.name, tag.ver));
+        scope(exit) hash[] = 0;
+        final switch (tag.type)
+        {
+            case Tag.Encoding.alphanumeric:
+                auto s = encodeBase62(hash);
+                scope(exit) s[] = 0;
+                vk.write(s[0 .. tag.length]);
+                break;
+            case Tag.Encoding.numeric:
+                auto s = encodeBase10(hash);
+                scope(exit) s[] = 0;
+                vk.write(s[0 .. tag.length]);
+                break;
+            case Tag.Encoding.specialChar:
+                auto s = encodeBase1023(hash, Lut.special);
+                scope(exit) s[] = 0;
+                vk.write(s[0 .. tag.length]);
+                break;
+            case Tag.Encoding.restrictedSpecialChar:
+                auto s = encodeBase1023(hash, Lut.restrictedSpecial);
+                scope(exit) s[] = 0;
+                vk.write(s[0 .. tag.length]);
+                break;
+        }
+    }
+
     while (true)
     {
         auto tag = recvTag();
-        enforce(!lepasd_clearPipe(triggerPath));
-        char[32] buf;
-        const read = lepasd_readPipe(triggerPath, &buf[0], buf.sizeof, armedDuration * 1000);
-        enforce(read != -1);
+        enum armedDuration = dur!"seconds"(10);
+        if (!recvTrigger(armedDuration))
+            continue;
+
+        encodeAndType(tag);
     }
 }
 
