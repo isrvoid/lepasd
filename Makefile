@@ -8,8 +8,8 @@ endif
 
 VPATH := src
 
-UNITTESTSRC := lepasd/tags.d lepasd/encoding.d
-LEPASDSRC := lepasd/app.d lepasd/hashgen.d lepasd/tags.d lepasd/encoding.d
+UNITTESTSRC := lepasd/encoding.d lepasd/tags.d
+LEPASDSRC := lepasd/app.d lepasd/encoding.d lepasd/hashgen.d lepasd/swkeyboard.d lepasd/tags.d
 
 ARGON2DIR := third_party/argon2
 ARGON2TARGET := libargon2.a
@@ -18,7 +18,7 @@ ARGON2 := $(ARGON2DIR)/$(ARGON2TARGET)
 SHA3DIR := third_party/tiny_sha3
 SHA3 := $(SHA3DIR)/sha3.o
 
-bin/lepasd: bin/hashgen.o bin/util.o $(ARGON2) $(SHA3) $(LEPASDSRC)
+bin/lepasd: bin/hashgen.o bin/swkeyboard.o bin/util.o $(ARGON2) $(SHA3) $(LEPASDSRC)
 	@dmd $(DFLAGS) -Jsrc/lepasd $^ -of$@
 
 bin/unittest: $(UNITTESTSRC)
@@ -29,6 +29,9 @@ CDONTWARN := -Wno-missing-prototypes -Wno-documentation-unknown-command -Wno-pad
 	-Wno-compare-distinct-pointer-types -Wno-reserved-id-macro
 bin/hashgen.o: hashgen.c
 	@clang -c $(CFLAGS) -Weverything $(CDONTWARN) $(CINCLUDES) $^ -o $@
+
+bin/swkeyboard.o: swkeyboard.c
+	@clang -c $(CFLAGS) -Weverything $(CDONTWARN) $^ -o $@
 
 bin/util.o: util.c
 	@clang -c $(CFLAGS) -Weverything $(CDONTWARN) $^ -o $@

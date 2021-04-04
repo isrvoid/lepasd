@@ -16,6 +16,7 @@ import std.string : strip, toStringz;
 
 import lepasd.encoding;
 import lepasd.hashgen;
+import lepasd.swkeyboard;
 import lepasd.tags;
 
 extern (C) int daemon(int, int);
@@ -209,7 +210,6 @@ Tag recvTag() @trusted
     return result;
 }
 
-
 extern (C)
 {
     int lepasd_getPassword(void*, size_t) @nogc;
@@ -257,28 +257,8 @@ retry:
 
     createTempFiles();
     enforce(!lepasd_clearPipe(path.tagInput.toStringz));
-    auto vk = VrKeyboard(0);
-    daemonLoop(gen, vk);
-}
-
-struct VrKeyboard
-{
-    this() @disable;
-    // FIXME
-    this(int)
-    {
-    }
-
-    ~this()
-    {
-        //close(fd);
-    }
-
-    void write(in char[] s) const
-    {
-    }
-
-    private int fd;
+    auto sk = SwKeyboard(0);
+    daemonLoop(gen, sk);
 }
 
 void createTempFiles()
@@ -293,7 +273,7 @@ void createTempFiles()
     mkfifo(path.trigger.toStringz, octal!622);
 }
 
-void daemonLoop(in ref HashGen gen, in ref VrKeyboard vk)
+void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
 {
     import core.time : dur, Duration;
     bool recvTrigger(Duration timeout)
@@ -315,22 +295,22 @@ void daemonLoop(in ref HashGen gen, in ref VrKeyboard vk)
             case Tag.Encoding.alphanumeric:
                 auto s = encodeBase62(hash);
                 scope(exit) s[] = 0;
-                vk.write(s[0 .. tag.length]);
+                keyboard.write(s[0 .. tag.length]);
                 break;
             case Tag.Encoding.numeric:
                 auto s = encodeBase10(hash);
                 scope(exit) s[] = 0;
-                vk.write(s[0 .. tag.length]);
+                keyboard.write(s[0 .. tag.length]);
                 break;
             case Tag.Encoding.specialChar:
                 auto s = encodeBase1023(hash, Lut.special);
                 scope(exit) s[] = 0;
-                vk.write(s[0 .. tag.length]);
+                keyboard.write(s[0 .. tag.length]);
                 break;
             case Tag.Encoding.restrictedSpecialChar:
                 auto s = encodeBase1023(hash, Lut.restrictedSpecial);
                 scope(exit) s[] = 0;
-                vk.write(s[0 .. tag.length]);
+                keyboard.write(s[0 .. tag.length]);
                 break;
         }
     }
