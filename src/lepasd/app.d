@@ -28,6 +28,7 @@ void main(string[] args)
 {
     import std.getopt;
     bool isAddTag, isTagLine, isTest;
+    const isEmptyArgs = args.length == 1;
     auto opt = getopt(args,
             config.passThrough,
             "add|a", "Add new tag to '" ~ BaseName.tags ~ "'.", &isAddTag,
@@ -42,9 +43,14 @@ void main(string[] args)
     }
 
     args = args[1 .. $];
-    const isStartDaemon = !(isAddTag || isTagLine || args.length);
+    const isStartDaemon = isEmptyArgs;
+    const shouldParseTag = isAddTag || isTagLine;
+    const maybeExistingTagUse = !shouldParseTag && args.length > 0;
+    const shouldSendTag = isTagLine || maybeExistingTagUse;
+    const isDaemonRequired = isStartDaemon || shouldSendTag || isTest;
+
     Tag tag;
-    if (isAddTag || isTagLine)
+    if (shouldParseTag)
     {
         tag = parseTag(args);
         args = null;
@@ -54,9 +60,10 @@ void main(string[] args)
     {
         checkLength(tag);
         writeNewTag(tag);
-        if (!isTagLine)
-            return;
     }
+
+    if (!isDaemonRequired)
+        return;
 
     const isRunning = isDaemonRunning();
     if (isStartDaemon && isRunning)
@@ -74,14 +81,17 @@ void main(string[] args)
         return;
     }
 
+    if (isTest)
+        test();
+
+    if (!shouldSendTag)
+        return;
+
     if (args.length > 1)
         throw new Exception("Single tag name argument allowed");
 
     if (args.length)
         tag = loadTag(args[0]);
-
-    if (isTest)
-        test();
 
     checkLength(tag);
     sendTag(tag);
@@ -139,12 +149,18 @@ void checkLength(in Tag tag) pure @safe
 
 void test()
 {
+    import std.stdio : readln;
+    import std.string : stripRight;
     sendTag(Tag("dummy"));
     Thread.sleep(dur!"msecs"(10));
+    File(path.trigger, "w").write("test");
+    if (readln().stripRight == testString)
+        writeln("OK");
+    else
     {
-        File(path.trigger, "w").write("test");
+        writeln(testString, " (expected)");
+        throw new Exception("Mismatch. Keyboard layout not switched to English (US)?");
     }
-    Thread.sleep(dur!"seconds"(1)); // FIXME
 }
 
 enum appName = "lepasd";
@@ -301,25 +317,30 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
 {
     enum Trigger
     {
-        none,
+        timeout,
         fire,
-        test
+        test,
+        invalid
     }
 
     auto recvTrigger(Duration timeout)
     {
+        import std.algorithm : startsWith;
         const triggerPath = path.trigger.toStringz;
         enforce(!lepasd_clearPipe(triggerPath));
         char[32] buf;
         const length = lepasd_readPipe(triggerPath, &buf[0], buf.sizeof, timeout.total!"msecs");
         enforce(length != -1);
-        if (length && buf[0] == 1 || buf[0] == '1')
+        if (!length)
+            return Trigger.timeout;
+
+        if (buf[0] == 1 || buf[0] == '1')
             return Trigger.fire;
 
-        if (buf[0 .. length] == "test")
+        if (buf[].startsWith("test"))
             return Trigger.test;
 
-        return Trigger.none;
+        return Trigger.invalid;
     }
 
     void encodeAndType(Tag tag)
@@ -356,14 +377,17 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
         auto tag = recvTag();
         enum armedDuration = dur!"seconds"(10);
         const trigger = recvTrigger(armedDuration);
-        if (trigger == Trigger.none)
-            continue;
 
-        Thread.sleep(dur!"msecs"(600)); // allow time to release any keys
         if (trigger == Trigger.fire)
+        {
+            Thread.sleep(dur!"msecs"(500)); // allow time to release any physical keys
             encodeAndType(tag);
+        }
         else if (trigger == Trigger.test)
+        {
+            Thread.sleep(dur!"msecs"(250)); // allow time to release 'Enter'
             keyboard.write(testString ~ '\n');
+        }
     }
 }
 
