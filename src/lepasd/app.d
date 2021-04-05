@@ -115,14 +115,14 @@ void checkLength(in Tag tag) pure @safe
     uint maxLength;
     final switch (tag.type)
     {
-        case Tag.Encoding.numeric:
+        case Tag.Type.numeric:
             maxLength = MaxLength.base10;
             break;
-        case Tag.Encoding.alphanumeric:
+        case Tag.Type.alphanumeric:
             maxLength = MaxLength.base62;
             break;
-        case Tag.Encoding.specialChar:
-        case Tag.Encoding.restrictedSpecialChar:
+        case Tag.Type.specialChar:
+        case Tag.Type.restrictedSpecialChar:
             maxLength = MaxLength.specialChar;
             break;
     }
@@ -303,22 +303,22 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
         scope(exit) hash[] = 0;
         final switch (tag.type)
         {
-            case Tag.Encoding.alphanumeric:
+            case Tag.Type.alphanumeric:
                 auto s = encodeBase62(hash);
                 scope(exit) s[] = 0;
                 keyboard.write(s[0 .. tag.length]);
                 break;
-            case Tag.Encoding.numeric:
+            case Tag.Type.numeric:
                 auto s = encodeBase10(hash);
                 scope(exit) s[] = 0;
                 keyboard.write(s[0 .. tag.length]);
                 break;
-            case Tag.Encoding.specialChar:
+            case Tag.Type.specialChar:
                 auto s = encodeBase1023(hash, Lut.special);
                 scope(exit) s[] = 0;
                 keyboard.write(s[0 .. tag.length]);
                 break;
-            case Tag.Encoding.restrictedSpecialChar:
+            case Tag.Type.restrictedSpecialChar:
                 auto s = encodeBase1023(hash, Lut.restrictedSpecial);
                 scope(exit) s[] = 0;
                 keyboard.write(s[0 .. tag.length]);

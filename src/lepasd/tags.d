@@ -20,14 +20,14 @@ struct Tag
     uint ver;
     uint length = 24;
 
-    enum Encoding
+    enum Type
     {
         alphanumeric,
         numeric,
         specialChar,
         restrictedSpecialChar
     }
-    auto type = Encoding.alphanumeric;
+    auto type = Type.alphanumeric;
 }
 
 auto parseOpt(R)(R rawOpt) pure
@@ -59,8 +59,8 @@ if (isSomeString!R)
         }
         else if (c[3])
         {
-            enum lut = ['a': Tag.Encoding.alphanumeric, 'n': Tag.Encoding.numeric,
-                     's': Tag.Encoding.specialChar, 'r': Tag.Encoding.restrictedSpecialChar];
+            enum lut = ['a': Tag.Type.alphanumeric, 'n': Tag.Type.numeric,
+                     's': Tag.Type.specialChar, 'r': Tag.Type.restrictedSpecialChar];
             opt[2] = lut[c[3][0]];
             isSet.type = true;
         }
@@ -95,30 +95,30 @@ unittest
 {
     auto expect = Tag("foo");
 
-    expect.type = Tag.Encoding.alphanumeric;
+    expect.type = Tag.Type.alphanumeric;
     assert(expect == Tag("foo", parseOpt("a").expand));
 
-    expect.type = Tag.Encoding.numeric;
+    expect.type = Tag.Type.numeric;
     assert(expect == Tag("foo", parseOpt("n").expand));
 
-    expect.type = Tag.Encoding.specialChar;
+    expect.type = Tag.Type.specialChar;
     assert(expect == Tag("foo", parseOpt("s").expand));
 
-    expect.type = Tag.Encoding.restrictedSpecialChar;
+    expect.type = Tag.Type.restrictedSpecialChar;
     assert(expect == Tag("foo", parseOpt("r").expand));
 }
 
 @("multiple options")
 unittest
 {
-    const expect = Tag("foo", 0, 32, Tag.Encoding.alphanumeric);
+    const expect = Tag("foo", 0, 32, Tag.Type.alphanumeric);
     assert(expect == Tag("foo", parseOpt("v0 32 a").expand));
 }
 
 @("option order is irrelevant")
 unittest
 {
-    const expect = Tag("foo", 0, 32, Tag.Encoding.alphanumeric);
+    const expect = Tag("foo", 0, 32, Tag.Type.alphanumeric);
     assert(expect == Tag("foo", parseOpt("a v0 32").expand));
 }
 
@@ -151,7 +151,7 @@ unittest
 @("ignores whitespace")
 unittest
 {
-    const expect = Tag("foo", 0, 32, Tag.Encoding.alphanumeric);
+    const expect = Tag("foo", 0, 32, Tag.Type.alphanumeric);
     assert(expect == Tag("foo", parseOpt("\tv0  \t  \t 32\t\ta    ").expand));
 }
 
@@ -187,7 +187,7 @@ unittest
 @("single tag with options")
 unittest
 {
-    const expect = Tag("foo", 3, 16, Tag.Encoding.alphanumeric);
+    const expect = Tag("foo", 3, 16, Tag.Type.alphanumeric);
     assert(expect == findTag(["@foo 16 a v3"], "foo"));
 }
 
@@ -260,8 +260,8 @@ string toLine(Tag tag) pure nothrow
     }
     if (tag.type != Tag.init.type)
     {
-        enum lut = [Tag.Encoding.alphanumeric: 'a', Tag.Encoding.numeric: 'n',
-                 Tag.Encoding.specialChar: 's', Tag.Encoding.restrictedSpecialChar: 'r'];
+        enum lut = [Tag.Type.alphanumeric: 'a', Tag.Type.numeric: 'n',
+                 Tag.Type.specialChar: 's', Tag.Type.restrictedSpecialChar: 'r'];
         opt ~= ' ';
         opt ~= lut[tag.type];
     }
@@ -271,7 +271,7 @@ string toLine(Tag tag) pure nothrow
 @("full tag")
 unittest
 {
-    assert("@ foo v1 16 n" == toLine(Tag("foo", 1, 16, Tag.Encoding.numeric)));
+    assert("@ foo v1 16 n" == toLine(Tag("foo", 1, 16, Tag.Type.numeric)));
 }
 
 @("default values are not written")
@@ -283,13 +283,13 @@ unittest
 @("special characters option")
 unittest
 {
-    assert("@ foo 12 s" == toLine(Tag("foo", 0, 12, Tag.Encoding.specialChar)));
+    assert("@ foo 12 s" == toLine(Tag("foo", 0, 12, Tag.Type.specialChar)));
 }
 
 @("restricted special characters option")
 unittest
 {
-    assert("@ foo 12 r" == toLine(Tag("foo", 0, 12, Tag.Encoding.restrictedSpecialChar)));
+    assert("@ foo 12 r" == toLine(Tag("foo", 0, 12, Tag.Type.restrictedSpecialChar)));
 }
 
 @("version has no trailing space")
