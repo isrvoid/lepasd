@@ -35,7 +35,7 @@ static const uint16_t numericLut[] = {
 };
 
 static const uint16_t availableKeys[] = {
-    KEY_LEFTSHIFT,
+    KEY_ENTER, KEY_LEFTSHIFT, KEY_RIGHTSHIFT,
     ALPHA_KEYS, NUMERIC_KEYS,
     KEY_APOSTROPHE, KEY_EQUAL, KEY_COMMA, KEY_MINUS, KEY_SEMICOLON, KEY_SLASH,
     KEY_LEFTBRACE, KEY_RIGHTBRACE, KEY_GRAVE
@@ -62,13 +62,15 @@ static int typeKey(int fd, uint16_t key) {
 }
 
 static int shiftTypeKey(int fd, uint16_t key) {
-    if (keyAction(fd, KEY_LEFTSHIFT, true))
+    const uint16_t lut[] = { KEY_LEFTSHIFT, KEY_RIGHTSHIFT };
+    const uint16_t shiftKey = lut[key & 1];
+    if (keyAction(fd, shiftKey, true))
         return -1;
     if (keyAction(fd, key, true))
         return -1;
     if (keyAction(fd, key, false))
         return -1;
-    if (keyAction(fd, KEY_LEFTSHIFT, false))
+    if (keyAction(fd, shiftKey, false))
         return -1;
     if (syncEvent(fd))
         return -1;
@@ -117,6 +119,9 @@ static int typeNumeric(int fd, char c) {
 
 static int typeSpecial(int fd, char c) {
     switch (c) {
+        case '\n':
+            TYPE(KEY_ENTER);
+            break;
         case '!':
             SHIFT_TYPE(KEY_1);
             break;
