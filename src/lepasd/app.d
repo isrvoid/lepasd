@@ -5,14 +5,16 @@
 
 module lepasd.app;
 
+import core.thread : Thread;
+import core.time : dur, Duration;
 import std.array : array, join;
-import std.path : buildPath;
 import std.exception : enforce;
-import std.file;
-import std.stdio : File, writeln;
+import std.file : exists, mkdirRecurse, readText, tempDir;
 import std.format : format;
-import std.typecons : Nullable;
+import std.path : buildPath;
+import std.stdio : File, writeln;
 import std.string : strip, toStringz;
+import std.typecons : Nullable;
 
 import lepasd.encoding;
 import lepasd.hashgen;
@@ -25,11 +27,12 @@ extern (C) int mkfifo(const char*, uint);
 void main(string[] args)
 {
     import std.getopt;
-    bool isAddTag, isTagLine;
+    bool isAddTag, isTagLine, isTest;
     auto opt = getopt(args,
             config.passThrough,
             "add|a", "Add new tag to '" ~ BaseName.tags ~ "'.", &isAddTag,
-            "tag|t", "Use tag ignoring '" ~ BaseName.tags ~ "'; for one-off use.", &isTagLine
+            "tag|t", "Use tag ignoring '" ~ BaseName.tags ~ "'; for one-off use.", &isTagLine,
+            "test", "Make the daemon type a test line, compare with expected.", &isTest
             );
 
     if (opt.helpWanted)
@@ -76,6 +79,9 @@ void main(string[] args)
 
     if (args.length)
         tag = loadTag(args[0]);
+
+    if (isTest)
+        test();
 
     checkLength(tag);
     sendTag(tag);
@@ -129,6 +135,16 @@ void checkLength(in Tag tag) pure @safe
     const isValidLength = tag.length >= minLength && tag.length <= maxLength;
     enforce(isValidLength, format!"Length '%d' is out valid [%d, %d] for '%s' type"(
             tag.length, minLength, maxLength, tag.type));
+}
+
+void test()
+{
+    sendTag(Tag("dummy"));
+    Thread.sleep(dur!"msecs"(10));
+    {
+        File(path.trigger, "w").write("test");
+    }
+    Thread.sleep(dur!"seconds"(1)); // FIXME
 }
 
 enum appName = "lepasd";
@@ -275,26 +291,35 @@ void createTempFiles()
 {
     import std.process : thisProcessID;
     import std.conv : octal, to;
-    try
-        mkdir(tempFileDir);
-    catch(Exception) { }
-    std.file.write(path.pid, thisProcessID().to!string ~ '\n');
+    mkdirRecurse(tempFileDir);
+    File(path.pid, "w").writeln(thisProcessID().to!string);
     mkfifo(path.tagInput.toStringz, octal!622);
     mkfifo(path.trigger.toStringz, octal!622);
 }
 
 void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
 {
-    import core.time : dur, Duration;
-    import core.thread : Thread;
-    bool recvTrigger(Duration timeout)
+    enum Trigger
+    {
+        none,
+        fire,
+        test
+    }
+
+    auto recvTrigger(Duration timeout)
     {
         const triggerPath = path.trigger.toStringz;
         enforce(!lepasd_clearPipe(triggerPath));
         char[32] buf;
         const length = lepasd_readPipe(triggerPath, &buf[0], buf.sizeof, timeout.total!"msecs");
         enforce(length != -1);
-        return length && (buf[0] == 1 || buf[0] == '1');
+        if (length && buf[0] == 1 || buf[0] == '1')
+            return Trigger.fire;
+
+        if (buf[0 .. length] == "test")
+            return Trigger.test;
+
+        return Trigger.none;
     }
 
     void encodeAndType(Tag tag)
@@ -330,13 +355,19 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
     {
         auto tag = recvTag();
         enum armedDuration = dur!"seconds"(10);
-        if (!recvTrigger(armedDuration))
+        const trigger = recvTrigger(armedDuration);
+        if (trigger == Trigger.none)
             continue;
 
-        Thread.sleep(dur!"msecs"(600)); // allow time to release any modifier keys
-        encodeAndType(tag);
+        Thread.sleep(dur!"msecs"(600)); // allow time to release any keys
+        if (trigger == Trigger.fire)
+            encodeAndType(tag);
+        else if (trigger == Trigger.test)
+            keyboard.write(testString ~ '\n');
     }
 }
+
+enum testString = Lut.base62 ~ SpecialChar.set;
 
 Nullable!string loadCrc() nothrow
 {

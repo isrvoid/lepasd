@@ -1,4 +1,4 @@
-Type out passwords based on a single password. Portable, no vault.
+Type out passwords based on a single password. Storageless - no vault.
 
 Usage:
   Start the daemon:
