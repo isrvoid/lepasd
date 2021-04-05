@@ -3,7 +3,6 @@
  * MIT License
  */
 
-#define _POSIX_C_SOURCE 1
 #define _DEFAULT_SOURCE 1
 #include <assert.h>
 #include <errno.h>
@@ -46,7 +45,7 @@ int lepasd_getPassword(void* dest, size_t destLength) {
                 goto exit;
             case 0x08: // Ctrl-H
             case 0x7f: // backspace
-                if (p > dest)
+                if ((void*)p > dest)
                     --p;
                 continue;
             case 0x15: // Ctrl-U

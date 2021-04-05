@@ -3,6 +3,7 @@
  * MIT License
  */
 
+#define _DEFAULT_SOURCE 1
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
