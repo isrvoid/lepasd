@@ -16,6 +16,17 @@ extern (C)
 
 struct SwKeyboard
 {
+    static bool canCreate()
+    {
+        import std.file : exists;
+        import std.stdio : File;
+        enum path = "/dev/uinput";
+        try
+            return path.exists && File(path, "wb").isOpen;
+        catch (Exception)
+            return false;
+    }
+
     this() @disable;
 
     this(int)

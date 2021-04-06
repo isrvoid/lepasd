@@ -75,6 +75,8 @@ void main(string[] args)
     if (!isDaemonRequired)
         return;
 
+    enforce(SwKeyboard.canCreate, "Can't emulate keyboard. Missing uinput udev rule? (check --help)");
+
     const isRunning = isDaemonRunning();
     if (isStartDaemon && isRunning)
     {
@@ -113,8 +115,9 @@ auto helpText()
 {
     enum confDir = buildPath("~", relConfigDir);
     enum crc = buildPath("~", relConfigDir, BaseName.crc);
+    enum trigger = buildPath("~", relRunDir, BaseName.trigger);
     enum rawHelpFile = import("apphelp.txt");
-    return format!rawHelpFile(confDir, path.trigger, crc, tagsHelpPath, SpecialChar.restrictedSet);
+    return format!rawHelpFile(confDir, trigger, crc, tagsHelpPath, SpecialChar.restrictedSet);
 }
 
 bool isDaemonRunning()
@@ -175,6 +178,7 @@ void test()
 
 enum appName = "lepasd";
 enum relConfigDir = buildPath(".config", appName);
+enum relRunDir = buildPath(relConfigDir, BaseName.run);
 enum BaseName : string
 {
     tags = "tags",
@@ -199,7 +203,7 @@ static this()
     const home = environment.get("HOME");
     enforce(home, "HOME not set");
     configDir = buildPath(home, relConfigDir);
-    runDir = buildPath(configDir, BaseName.run);
+    runDir = buildPath(home, relRunDir);
 
     path.tags = buildPath(configDir, BaseName.tags);
     path.crc = buildPath(configDir, BaseName.crc);
