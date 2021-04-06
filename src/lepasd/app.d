@@ -316,19 +316,10 @@ void createRunFiles()
 {
     import std.process : thisProcessID;
     import std.conv : octal, to;
-    import std.file : getAttributes, remove;
     void makeFifo(string path)
     {
-        enum fifoMask = octal!10000;
-        bool exists = exists(path);
-        const isFifo = exists && getAttributes(path) & fifoMask;
-        if (exists && !isFifo)
-        {
-            remove(path);
-            exists = false;
-        }
-        if (!exists)
-            mkfifo(path.toStringz, octal!622);
+        if (!exists(path))
+            mkfifo(path.toStringz, octal!600);
     }
 
     File(path.pid, "w").writeln(thisProcessID().to!string);
