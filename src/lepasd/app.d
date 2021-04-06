@@ -9,7 +9,7 @@ import core.thread : Thread;
 import core.time : dur, Duration;
 import std.array : array, join;
 import std.exception : enforce;
-import std.file : exists, mkdirRecurse, readText, tempDir;
+import std.file : exists, readText;
 import std.format : format;
 import std.path : buildPath;
 import std.stdio : File, writeln;
@@ -48,6 +48,16 @@ void main(string[] args)
     const maybeExistingTagUse = !shouldParseTag && args.length > 0;
     const shouldSendTag = isTagLine || maybeExistingTagUse;
     const isDaemonRequired = isStartDaemon || shouldSendTag || isTest;
+
+    void maybeCreateDirs()
+    {
+        import std.file : mkdirRecurse;
+        if (!exists(configDir))
+            mkdirRecurse(configDir);
+        if (isDaemonRequired && !exists(runDir))
+            mkdirRecurse(runDir);
+    }
+    maybeCreateDirs();
 
     Tag tag;
     if (shouldParseTag)
@@ -172,15 +182,16 @@ enum BaseName : string
     pid = "pid",
     tagInput = "tag",
     trigger = "trigger",
+    run = "run",
     error = "error"
 }
 
-const string configDir, tempFileDir;
 struct Path
 {
     string tags, crc, pid, tagInput, trigger, error;
 }
 const Path path;
+const string configDir, runDir;
 
 static this()
 {
@@ -188,13 +199,14 @@ static this()
     const home = environment.get("HOME");
     enforce(home, "HOME not set");
     configDir = buildPath(home, relConfigDir);
-    tempFileDir = buildPath(tempDir(), appName);
+    runDir = buildPath(configDir, BaseName.run);
+
     path.tags = buildPath(configDir, BaseName.tags);
     path.crc = buildPath(configDir, BaseName.crc);
-    path.pid = buildPath(tempFileDir, BaseName.pid);
-    path.tagInput = buildPath(tempFileDir, BaseName.tagInput);
-    path.trigger = buildPath(tempFileDir, BaseName.trigger);
-    path.error = buildPath(tempFileDir, BaseName.error);
+    path.pid = buildPath(runDir, BaseName.pid);
+    path.tagInput = buildPath(runDir, BaseName.tagInput);
+    path.trigger = buildPath(runDir, BaseName.trigger);
+    path.error = buildPath(runDir, BaseName.error);
 }
 
 auto loadTag(string name)
@@ -207,9 +219,6 @@ auto loadTag(string name)
 
 void writeNewTag(Tag tag)
 {
-    if (!exists(configDir))
-        mkdirRecurse(configDir);
-
     auto file = File(path.tags, "a+");
     const isFileEmpty = !file.size;
     auto isNewTag = () => isFileEmpty || file.byLine.findTag(tag.name).isNull;
@@ -291,7 +300,7 @@ retry:
 
     try
     {
-        createTempFiles();
+        createRunFiles();
         enforce(!lepasd_clearPipe(path.tagInput.toStringz));
         auto sk = SwKeyboard(0);
         daemonLoop(gen, sk);
@@ -303,14 +312,28 @@ retry:
     }
 }
 
-void createTempFiles()
+void createRunFiles()
 {
     import std.process : thisProcessID;
     import std.conv : octal, to;
-    mkdirRecurse(tempFileDir);
+    import std.file : getAttributes, remove;
+    void makeFifo(string path)
+    {
+        enum fifoMask = octal!10000;
+        bool exists = exists(path);
+        const isFifo = exists && getAttributes(path) & fifoMask;
+        if (exists && !isFifo)
+        {
+            remove(path);
+            exists = false;
+        }
+        if (!exists)
+            mkfifo(path.toStringz, octal!622);
+    }
+
     File(path.pid, "w").writeln(thisProcessID().to!string);
-    mkfifo(path.tagInput.toStringz, octal!622);
-    mkfifo(path.trigger.toStringz, octal!622);
+    makeFifo(path.tagInput);
+    makeFifo(path.trigger);
 }
 
 void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
@@ -405,9 +428,6 @@ Nullable!string loadCrc() nothrow
 
 void storeCrc(string s)
 {
-    if (!exists(configDir))
-        mkdirRecurse(configDir);
-
     {
         auto file = File(path.crc, "w");
         file.rawWrite(s);
