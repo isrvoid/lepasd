@@ -30,6 +30,24 @@ struct Tag
     auto type = Type.alphanumeric;
 }
 
+struct TagTypeConv
+{
+pure: nothrow:
+    static char toChar(Tag.Type type)
+    {
+        enum lut = [Tag.Type.alphanumeric: 'a', Tag.Type.numeric: 'n',
+                 Tag.Type.specialChar: 's', Tag.Type.restrictedSpecialChar: 'r'];
+        return lut[type];
+    }
+
+    static auto fromChar(char c)
+    {
+        enum lut = ['a': Tag.Type.alphanumeric, 'n': Tag.Type.numeric,
+                 's': Tag.Type.specialChar, 'r': Tag.Type.restrictedSpecialChar];
+        return lut[c];
+    }
+}
+
 auto parseOpt(R)(R rawOpt) pure
 if (isSomeString!R)
 {
@@ -59,9 +77,7 @@ if (isSomeString!R)
         }
         else if (c[3])
         {
-            enum lut = ['a': Tag.Type.alphanumeric, 'n': Tag.Type.numeric,
-                     's': Tag.Type.specialChar, 'r': Tag.Type.restrictedSpecialChar];
-            opt[2] = lut[c[3][0]];
+            opt[2] = TagTypeConv.fromChar(c[3][0]);
             isSet.type = true;
         }
 
@@ -260,10 +276,8 @@ string toLine(Tag tag) pure nothrow
     }
     if (tag.type != Tag.init.type)
     {
-        enum lut = [Tag.Type.alphanumeric: 'a', Tag.Type.numeric: 'n',
-                 Tag.Type.specialChar: 's', Tag.Type.restrictedSpecialChar: 'r'];
         opt ~= ' ';
-        opt ~= lut[tag.type];
+        opt ~= TagTypeConv.toChar(tag.type);
     }
     return "@ " ~ tag.name ~ opt.data;
 }
