@@ -77,8 +77,23 @@ static int shiftTypeKey(int fd, uint16_t key) {
     return 0;
 }
 
-int lepasd_swKeyboardInit(void) {
-    const int fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+static const char* getPath(void) {
+
+    const char* const primary = "/dev/uinput";
+    const char* const alt = "/dev/input/uinput";
+    const bool altExists = access(alt, F_OK) != -1;
+    if (altExists)
+        return alt;
+    else
+        return primary;
+}
+
+bool lepasd_kbdCanInit(void) {
+    return access(getPath(), W_OK) != 1;
+}
+
+int lepasd_kbdInit(void) {
+    const int fd = open(getPath(), O_WRONLY | O_NONBLOCK);
     if (fd == -1)
         return -1;
 
@@ -210,10 +225,14 @@ static int typeChar(int fd, char c) {
     return typeSpecial(fd, c);
 }
 
-int lepasd_swKeyboardWrite(int fd, const char* s, size_t length) {
+int lepasd_kbdWrite(int fd, const char* s, size_t length) {
     for (size_t i = 0; i < length; ++i)
         if (typeChar(fd, s[i]))
             return -1;
 
     return 0;
+}
+
+int lepasd_kbdClose(int fd) {
+    return close(fd);
 }
