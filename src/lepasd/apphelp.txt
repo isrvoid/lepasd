@@ -31,7 +31,7 @@ When new CRC is created:
   A minimal tag in '%s' consists of a single name:
   @foo
   It's equivalent to explicitly stated default options (version, length, encoding):
-  @foo v0 20 a
+  @foo %s
   To change a password, increment the version (e.g. 'v1').
   Encoding: a - alphanumeric; n - numeric; s - with special characters; r - with special characters restricted to %s
   Any line not beginning with '@' is a comment. It's useful for adding info below a tag (e.g. login name).

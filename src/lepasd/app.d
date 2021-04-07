@@ -117,7 +117,8 @@ auto helpText()
     enum crc = buildPath("~", relConfigDir, BaseName.crc);
     enum trigger = buildPath("~", relRunDir, BaseName.trigger);
     enum rawHelpFile = import("apphelp.txt");
-    return format!rawHelpFile(confDir, trigger, crc, tagsHelpPath, SpecialChar.restrictedSet);
+    enum initOpt = format!"v%d %d %c"(Tag.init.ver, Tag.init.length, TagTypeConv.toChar(Tag.init.type));
+    return format!rawHelpFile(confDir, trigger, crc, tagsHelpPath, initOpt, SpecialChar.restrictedSet);
 }
 
 bool isDaemonRunning()
