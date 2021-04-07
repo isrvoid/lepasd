@@ -75,7 +75,7 @@ void main(string[] args)
     if (!isDaemonRequired)
         return;
 
-    enforce(SwKeyboard.canCreate, "Can't emulate keyboard. Missing uinput udev rule? (check --help)");
+    enforce(SwKeyboard.canCreate, "Can't emulate keyboard. Missing udev uinput rule? (check --help)");
 
     const isRunning = isDaemonRunning();
     if (isStartDaemon && isRunning)
