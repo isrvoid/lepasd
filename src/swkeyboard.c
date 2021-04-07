@@ -89,7 +89,7 @@ static const char* getPath(void) {
 }
 
 bool lepasd_kbdCanInit(void) {
-    return access(getPath(), W_OK) != 1;
+    return access(getPath(), W_OK) != -1;
 }
 
 int lepasd_kbdInit(void) {
