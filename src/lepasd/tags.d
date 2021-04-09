@@ -22,10 +22,10 @@ struct Tag
 
     enum Type
     {
-        alphanumeric,
         numeric,
-        specialChar,
-        restrictedSpecialChar
+        alphanumeric,
+        requiresMix,
+        density
     }
     auto type = Type.alphanumeric;
 }
@@ -35,15 +35,15 @@ struct TagTypeConv
 pure: nothrow:
     static char toChar(Tag.Type type)
     {
-        enum lut = [Tag.Type.alphanumeric: 'a', Tag.Type.numeric: 'n',
-                 Tag.Type.specialChar: 's', Tag.Type.restrictedSpecialChar: 'r'];
+        enum lut = [Tag.Type.numeric: 'n', Tag.Type.alphanumeric: 'a',
+                 Tag.Type.requiresMix: 'r', Tag.Type.density: 'd'];
         return lut[type];
     }
 
     static auto fromChar(char c)
     {
-        enum lut = ['a': Tag.Type.alphanumeric, 'n': Tag.Type.numeric,
-                 's': Tag.Type.specialChar, 'r': Tag.Type.restrictedSpecialChar];
+        enum lut = ['n': Tag.Type.numeric, 'a': Tag.Type.alphanumeric,
+                 'r': Tag.Type.requiresMix, 'd': Tag.Type.density];
         return lut[c];
     }
 }
@@ -57,7 +57,7 @@ if (isSomeString!R)
     auto isSet = tuple!(bool, "ver", bool, "length", bool, "type");
     while (!tokens.empty)
     {
-        enum rOpt = ctRegex!`^v(\d+)$|^(\d+)$|^([anrs])$`;
+        enum rOpt = ctRegex!`^v(\d+)$|^(\d+)$|^([adnr])$`;
         auto c = matchFirst(tokens.front, rOpt);
         if (c.empty)
             throw new Exception("Invalid option");
@@ -111,17 +111,17 @@ unittest
 {
     auto expect = Tag("foo");
 
-    expect.type = Tag.Type.alphanumeric;
-    assert(expect == Tag("foo", parseOpt("a").expand));
-
     expect.type = Tag.Type.numeric;
     assert(expect == Tag("foo", parseOpt("n").expand));
 
-    expect.type = Tag.Type.specialChar;
-    assert(expect == Tag("foo", parseOpt("s").expand));
+    expect.type = Tag.Type.alphanumeric;
+    assert(expect == Tag("foo", parseOpt("a").expand));
 
-    expect.type = Tag.Type.restrictedSpecialChar;
+    expect.type = Tag.Type.requiresMix;
     assert(expect == Tag("foo", parseOpt("r").expand));
+
+    expect.type = Tag.Type.density;
+    assert(expect == Tag("foo", parseOpt("d").expand));
 }
 
 @("multiple options")
@@ -294,16 +294,12 @@ unittest
     assert("@ foo" == toLine(Tag("foo")));
 }
 
-@("special characters option")
+@("non default type options")
 unittest
 {
-    assert("@ foo 12 s" == toLine(Tag("foo", 0, 12, Tag.Type.specialChar)));
-}
-
-@("restricted special characters option")
-unittest
-{
-    assert("@ foo 12 r" == toLine(Tag("foo", 0, 12, Tag.Type.restrictedSpecialChar)));
+    assert("@ foo 16 n" == toLine(Tag("foo", 0, 16, Tag.Type.numeric)));
+    assert("@ foo 16 r" == toLine(Tag("foo", 0, 16, Tag.Type.requiresMix)));
+    assert("@ foo 16 d" == toLine(Tag("foo", 0, 16, Tag.Type.density)));
 }
 
 @("version has no trailing space")

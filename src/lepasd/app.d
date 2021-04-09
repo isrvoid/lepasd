@@ -118,7 +118,7 @@ auto helpText()
     enum trigger = buildPath("~", relRunDir, BaseName.trigger);
     enum rawHelpFile = import("apphelp.txt");
     enum initOpt = format!"v%d %d %c"(Tag.init.ver, Tag.init.length, TagTypeConv.toChar(Tag.init.type));
-    return format!rawHelpFile(confDir, trigger, crc, tagsHelpPath, initOpt, SpecialChar.restrictedSet);
+    return format!rawHelpFile(confDir, trigger, crc, tagsHelpPath, initOpt);
 }
 
 bool isDaemonRunning()
@@ -151,14 +151,14 @@ void checkLength(in Tag tag) pure @safe
         case Tag.Type.alphanumeric:
             maxLength = MaxLength.base62;
             break;
-        case Tag.Type.specialChar:
-        case Tag.Type.restrictedSpecialChar:
-            maxLength = MaxLength.specialChar;
+        case Tag.Type.requiresMix:
+        case Tag.Type.density:
+            maxLength = MaxLength.base1023;
             break;
     }
     const isValidLength = tag.length >= minLength && tag.length <= maxLength;
-    enforce(isValidLength, format!"Length '%d' is out valid [%d, %d] for '%s' type"(
-            tag.length, minLength, maxLength, tag.type));
+    enforce(isValidLength, format!"Length '%d' is out of range [%d, %d] valid for '%c' encoding"(
+            tag.length, minLength, maxLength, TagTypeConv.toChar(tag.type)));
 }
 
 void test()
@@ -378,13 +378,13 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
                 scope(exit) s[] = 0;
                 keyboard.write(s[0 .. tag.length]);
                 break;
-            case Tag.Type.specialChar:
-                auto s = encodeBase1023(hash, Lut.special);
+            case Tag.Type.requiresMix:
+                auto s = encodeBase1023!(Lut.mixed)(hash);
                 scope(exit) s[] = 0;
                 keyboard.write(s[0 .. tag.length]);
                 break;
-            case Tag.Type.restrictedSpecialChar:
-                auto s = encodeBase1023(hash, Lut.restrictedSpecial);
+            case Tag.Type.density:
+                auto s = encodeBase1023!(Lut.dense)(hash);
                 scope(exit) s[] = 0;
                 keyboard.write(s[0 .. tag.length]);
                 break;
@@ -410,7 +410,7 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
     }
 }
 
-enum testString = Lut.base62 ~ SpecialChar.set;
+alias testString = Lut.dense;
 
 Nullable!string loadCrc() nothrow
 {

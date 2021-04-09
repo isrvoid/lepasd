@@ -12,25 +12,16 @@ import std.utf : byChar;
 
 @safe:
 
-struct SpecialChar
-{
-    enum length = Lut.special.length - 26 * 2 - 10 * 2;
-    enum set = "!#$%'()+,-:?@[]^_`{}~";
-    static assert(set.length == length);
-    enum restrictedSet = "#$%?@^_";
-    enum restricted = restrictedSet.repeat(3).join;
-    static assert(restricted.length == length);
-}
-
 struct Lut
 {
-    enum base10 = iota('0', char('9' + 1));
     enum string base62 = chain(iota('A', char('Z' + 1)), iota('a', char('z' + 1)), base10).array;
     static assert(base62.length == 62);
-    enum string special = chain(base62.byChar, SpecialChar.set.byChar, base10).array;
-    static assert(special.length == 93);
-    enum string restrictedSpecial = chain(base62.byChar, SpecialChar.restricted.byChar, base10).array;
-    static assert(restrictedSpecial.length == special.length);
+    enum string mixed = chain(base62.byChar, special.byChar, base10).array;
+    enum string dense = chain(iota('!', '\\'), iota(char('\\' + 1), char('~' + 1))).array;
+private:
+    enum base10 = iota('0', char('9' + 1));
+    enum conservativeSpecialSet = "#$%?@^_";
+    enum special = conservativeSpecialSet.repeat(3).join;
 }
 
 uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow @nogc
@@ -282,11 +273,10 @@ enum MaxLength
 {
     base10 = hashSize,
     base62 = hashSize,
-    specialChar = hashSize * 3 / 4
+    base1023 = hashSize * 3 / 4
 }
 
 auto encodeBase10(uint length = MaxLength.base10)(in ubyte[] hash) pure nothrow @nogc
-if (length)
 {
     enum tripletCount = length / 3 + (length % 3 != 0);
     char[tripletCount * 3] a;
@@ -366,7 +356,6 @@ unittest
 }
 
 auto encodeBase62(uint length = MaxLength.base62)(in ubyte[] hash) pure nothrow @nogc
-if (length)
 {
     char[length] result;
     auto bits = Bits(hash, 6);
@@ -408,9 +397,8 @@ unittest
     assert("A" == encodeBase62!1([0xfc, 0]));
 }
 
-auto encodeBase1023(uint length = MaxLength.specialChar)(in ubyte[] hash, string lut = Lut.special) pure nothrow @nogc
-if (0 == 1023 % Lut.special.length)
-in (lut.length == Lut.special.length)
+auto encodeBase1023(string lut, uint length = MaxLength.base1023)(in ubyte[] hash) pure nothrow @nogc
+if (0 == 1023 % lut.length)
 {
     char[length] result;
     auto bits = Bits(hash, 10);
@@ -429,25 +417,25 @@ in (lut.length == Lut.special.length)
 @("single symbol")
 unittest
 {
-    assert("A" == encodeBase1023!1([0, 0]));
+    assert("A" == encodeBase1023!(Lut.mixed, 1)([0, 0]));
 }
 
 @("two symbols")
 unittest
 {
-    assert("BC" == encodeBase1023!2([0, 0x40, 0x20]));
+    assert("BC" == encodeBase1023!(Lut.mixed, 2)([0, 0x40, 0x20]));
 }
 
 @("max")
 unittest
 {
-    assert("9" == encodeBase1023!1([0xff, 0x80]));
-    assert("99" == encodeBase1023!2([0xff, 0xbf, 0xe0]));
+    assert("9" == encodeBase1023!(Lut.mixed, 1)([0xff, 0x80]));
+    assert("99" == encodeBase1023!(Lut.mixed, 2)([0xff, 0xbf, 0xe0]));
 }
 
 @("1023 is skipped")
 unittest
 {
-    const expect = Lut.special[32 .. 33];
-    assert(expect == encodeBase1023!1([0xff, 0xc2, 0]));
+    const expect = Lut.dense[32 .. 33];
+    assert(expect == encodeBase1023!(Lut.dense, 1)([0xff, 0xc2, 0]));
 }
