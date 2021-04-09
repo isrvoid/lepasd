@@ -35,10 +35,10 @@ static const uint16_t numericLut[] = {
 };
 
 static const uint16_t availableKeys[] = {
-    KEY_ENTER, KEY_LEFTSHIFT, KEY_RIGHTSHIFT,
+    KEY_ENTER, KEY_SPACE, KEY_LEFTSHIFT, KEY_RIGHTSHIFT,
     ALPHA_KEYS, NUMERIC_KEYS,
-    KEY_APOSTROPHE, KEY_EQUAL, KEY_COMMA, KEY_MINUS, KEY_SEMICOLON, KEY_SLASH,
-    KEY_LEFTBRACE, KEY_RIGHTBRACE, KEY_GRAVE
+    KEY_APOSTROPHE, KEY_EQUAL, KEY_COMMA, KEY_DOT, KEY_MINUS, KEY_SEMICOLON,
+    KEY_SLASH, KEY_BACKSLASH, KEY_LEFTBRACE, KEY_RIGHTBRACE, KEY_GRAVE
 };
 
 static int syncEvent(int fd) {
@@ -137,8 +137,14 @@ static int typeSpecial(int fd, char c) {
         case '\n':
             TYPE(KEY_ENTER);
             break;
+        case ' ':
+            TYPE(KEY_SPACE);
+            break;
         case '!':
             SHIFT_TYPE(KEY_1);
+            break;
+        case '"':
+            SHIFT_TYPE(KEY_APOSTROPHE);
             break;
         case '#':
             SHIFT_TYPE(KEY_3);
@@ -149,6 +155,9 @@ static int typeSpecial(int fd, char c) {
         case '%':
             SHIFT_TYPE(KEY_5);
             break;
+        case '&':
+            SHIFT_TYPE(KEY_7);
+            break;
         case '\'':
             TYPE(KEY_APOSTROPHE);
             break;
@@ -157,6 +166,9 @@ static int typeSpecial(int fd, char c) {
             break;
         case ')':
             SHIFT_TYPE(KEY_0);
+            break;
+        case '*':
+            SHIFT_TYPE(KEY_8);
             break;
         case '+':
             SHIFT_TYPE(KEY_EQUAL);
@@ -167,8 +179,26 @@ static int typeSpecial(int fd, char c) {
         case '-':
             TYPE(KEY_MINUS);
             break;
+        case '.':
+            TYPE(KEY_DOT);
+            break;
+        case '/':
+            TYPE(KEY_SLASH);
+            break;
         case ':':
             SHIFT_TYPE(KEY_SEMICOLON);
+            break;
+        case ';':
+            TYPE(KEY_SEMICOLON);
+            break;
+        case '<':
+            SHIFT_TYPE(KEY_COMMA);
+            break;
+        case '=':
+            TYPE(KEY_EQUAL);
+            break;
+        case '>':
+            SHIFT_TYPE(KEY_DOT);
             break;
         case '?':
             SHIFT_TYPE(KEY_SLASH);
@@ -178,6 +208,9 @@ static int typeSpecial(int fd, char c) {
             break;
         case '[':
             TYPE(KEY_LEFTBRACE);
+            break;
+        case '\\':
+            TYPE(KEY_BACKSLASH);
             break;
         case ']':
             TYPE(KEY_RIGHTBRACE);
@@ -194,6 +227,9 @@ static int typeSpecial(int fd, char c) {
         case '{':
             SHIFT_TYPE(KEY_LEFTBRACE);
             break;
+        case '|':
+            SHIFT_TYPE(KEY_BACKSLASH);
+            break;
         case '}':
             SHIFT_TYPE(KEY_RIGHTBRACE);
             break;
@@ -208,7 +244,7 @@ static int typeSpecial(int fd, char c) {
 }
 
 static int typeChar(int fd, char c) {
-    const struct timespec dur = { .tv_nsec = 2000000 };
+    const struct timespec dur = { .tv_nsec = 1000000 };
     nanosleep(&dur, NULL);
     const bool isUpperCase = c >= 'A' && c <= 'Z';
     if (isUpperCase)

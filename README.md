@@ -12,8 +12,7 @@ This password derivation tool is something I would use personally, having strict
 Once chosen, the main password should be considered fixed. Changing it would require updating all derived passwords in use.
 
 ### Install
-Prerequisites: Linux, git, make, C and D compilers
-Replace 'REPOS' with desired path
+Prerequisites: Linux, git, make, C and D compilers. Replace ```REPOS``` with desired path.
 ```
 $ cd ~/REPOS
 $ git clone --recursive https://github.com/isrvoid/lepasd.git
