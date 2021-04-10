@@ -12,6 +12,7 @@ import std.exception : enforce;
 import std.file : exists, readText;
 import std.format : format;
 import std.path : buildPath;
+import std.process : environment, thisProcessID, executeShell;
 import std.stdio : File, writeln;
 import std.string : strip, toStringz;
 import std.typecons : Nullable;
@@ -27,12 +28,13 @@ extern (C) int mkfifo(const char*, uint);
 void main(string[] args)
 {
     import std.getopt;
-    bool isAddTag, isTagLine, isTest;
+    bool isAddTag, isTagLine, isKill, isTest;
     const isEmptyArgs = args.length == 1;
     auto opt = getopt(args,
             config.passThrough,
             "add|a", "Add new tag to '" ~ BaseName.tags ~ "'.", &isAddTag,
             "tag|t", "Use tag ignoring '" ~ BaseName.tags ~ "'; for one-off use.", &isTagLine,
+            "kill|k", "Kill the daemon.", &isKill,
             "test", "Make the daemon type a test line, compare with expected.", &isTest
             );
 
@@ -72,12 +74,22 @@ void main(string[] args)
         writeNewTag(tag);
     }
 
+    if (!(isDaemonRequired || isKill))
+        return;
+
+    const pid = getPid();
+    bool isRunning = isDaemonRunning(pid);
+    if (isRunning && isKill)
+    {
+        enforce(executeShell("kill " ~ pid).status == 0, "Failed to kill daemon");
+        isRunning = false;
+    }
+
     if (!isDaemonRequired)
         return;
 
     enforce(SwKeyboard.canCreate, "Can't emulate keyboard. Missing udev uinput rule? (check --help)");
 
-    const isRunning = isDaemonRunning();
     if (isStartDaemon && isRunning)
     {
         writeln("daemon already running");
@@ -121,12 +133,22 @@ auto helpText()
     return format!rawHelpFile(confDir, trigger, crc, tagsHelpPath, initOpt);
 }
 
-bool isDaemonRunning()
+Nullable!string getPid()
 {
     try
+        return Nullable!string(path.pid.readText.strip);
+    catch (Exception)
+        return Nullable!string();
+}
+
+bool isDaemonRunning(Nullable!string pid)
+{
+    if (pid.isNull)
+        return false;
+
+    try
     {
-        const sPid = path.pid.readText.strip;
-        const processName = buildPath("/proc", sPid, "comm").readText.strip;
+        const processName = buildPath("/proc", pid.get, "comm").readText.strip;
         return processName == appName;
     }
     catch (Exception)
@@ -200,7 +222,6 @@ const string configDir, runDir;
 
 static this()
 {
-    import std.process : environment;
     const home = environment.get("HOME");
     enforce(home, "HOME not set");
     configDir = buildPath(home, relConfigDir);
@@ -319,7 +340,6 @@ retry:
 
 void createRunFiles()
 {
-    import std.process : thisProcessID;
     import std.conv : octal, to;
     void makeFifo(string path)
     {
