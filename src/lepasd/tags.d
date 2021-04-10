@@ -176,7 +176,7 @@ if (isSomeString!(ElementType!R))
 {
     import std.string : strip;
     import std.typecons : nullable;
-    enum rTag = ctRegex!`^\W*@\W*([^\W]+)`;
+    enum rTag = ctRegex!`^\s*@\s*(\S+)`;
     tagName = tagName.strip;
     foreach (ref line; lines)
     {
@@ -258,6 +258,19 @@ unittest
 unittest
 {
     assert(Tag("foo") == findTag(["@foo"], "\n\tfoo   \n"));
+}
+
+@("tag with non word characters")
+unittest
+{
+    // middle
+    assert(Tag("foo.com") == findTag(["@ foo.com"], "foo.com"));
+    // start
+    assert(Tag("-foo") == findTag(["@-foo"], "-foo"));
+    // end
+    assert(Tag("foo+") == findTag(["@ foo+"], "foo+"));
+    // multiple
+    assert(Tag("foo.bar/i.h") == findTag(["@foo.bar/i.h"], "foo.bar/i.h"));
 }
 
 string toLine(Tag tag) pure nothrow
