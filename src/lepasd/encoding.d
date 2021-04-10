@@ -16,12 +16,11 @@ struct Lut
 {
     enum string base62 = chain(iota('A', char('Z' + 1)), iota('a', char('z' + 1)), base10).array;
     static assert(base62.length == 62);
-    enum string mixed = chain(base62.byChar, special.byChar, base10).array;
+    enum string mixed = chain(base62.byChar, base10, conservativeSpecial.byChar).array;
     enum string dense = chain(iota('!', '\\'), iota(char('\\' + 1), char('~' + 1))).array;
 private:
     enum base10 = iota('0', char('9' + 1));
-    enum conservativeSpecialSet = "#$%?@^_";
-    enum special = conservativeSpecialSet.repeat(3).join;
+    enum conservativeSpecial = "!#$%&()*@^_".repeat(2).join.takeExactly(21);
 }
 
 uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow @nogc
@@ -429,8 +428,9 @@ unittest
 @("max")
 unittest
 {
-    assert("9" == encodeBase1023!(Lut.mixed, 1)([0xff, 0x80]));
-    assert("99" == encodeBase1023!(Lut.mixed, 2)([0xff, 0xbf, 0xe0]));
+    enum char c = Lut.mixed.back;
+    assert([c] == encodeBase1023!(Lut.mixed, 1)([0xff, 0x80]));
+    assert([c, c] == encodeBase1023!(Lut.mixed, 2)([0xff, 0xbf, 0xe0]));
 }
 
 @("1023 is skipped")
