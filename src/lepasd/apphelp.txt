@@ -12,8 +12,8 @@ Files (tags, crc) are stored in '%s'.
 
 Configure trigger key:
   E.g. using 'xbindkeys', add 2 lines to '~/.xbindkeysrc':
-  "echo 1 > %s"
-    Release + Shift + End
+"echo 1 > %s"
+  Shift + Delete
 
 'Can't emulate keyboard' exception:
   Typing is done via 'uinput' and requires write permission. If the exception occurs,

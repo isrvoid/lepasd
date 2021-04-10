@@ -14,13 +14,16 @@ import std.utf : byChar;
 
 struct Lut
 {
+    import std.algorithm : isSorted;
     enum string base62 = chain(iota('A', char('Z' + 1)), iota('a', char('z' + 1)), base10).array;
     static assert(base62.length == 62);
     enum string mixed = chain(base62.byChar, base10, conservativeSpecial.byChar).array;
     enum string dense = chain(iota('!', '\\'), iota(char('\\' + 1), char('~' + 1))).array;
 private:
     enum base10 = iota('0', char('9' + 1));
-    enum conservativeSpecial = "!#$%&()*@^_".repeat(2).join.takeExactly(21);
+    enum conservativeSpecialSet = "!#$%&()*@^_";
+    static assert(conservativeSpecialSet.isSorted);
+    enum conservativeSpecial = conservativeSpecialSet.repeat(2).join.takeExactly(21);
 }
 
 uint bitWindow(in ubyte[] a, size_t pos, size_t width) pure nothrow @nogc
