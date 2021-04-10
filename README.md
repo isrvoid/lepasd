@@ -17,7 +17,7 @@ Prerequisites: Linux, git, make, C and D compilers. Replace ```REPOS``` with des
 $ cd ~/REPOS
 $ git clone --recursive https://github.com/isrvoid/lepasd.git
 $ cd lepasd
-$ RELEASE=1 make
+$ make
 $ sudo ln -s ~/REPOS/lepasd/bin/lepasd /usr/local/bin
 ```
 

@@ -1,9 +1,9 @@
-ifeq ($(RELEASE),1)
-	DFLAGS := -release -O
-	CFLAGS := -O3 -std=c11 -Wall -DNDEBUG
-else
+ifeq ($(DEBUG),1)
 	DFLAGS := -debug
-	CFLAGS := -O1 -std=c11 -Wall
+	CFLAGS := -O1 -std=c11
+else
+	DFLAGS := -release -O
+	CFLAGS := -O3 -std=c11 -DNDEBUG
 endif
 
 ifndef DC
