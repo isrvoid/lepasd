@@ -8,11 +8,11 @@ module lepasd.app;
 import core.thread : Thread;
 import core.time : dur, Duration;
 import std.array : array, join;
+import std.conv : to;
 import std.exception : enforce;
 import std.file : exists, readText;
 import std.format : format;
 import std.path : buildPath;
-import std.process : environment, thisProcessID, executeShell;
 import std.stdio : File, writeln;
 import std.string : strip, toStringz;
 import std.typecons : Nullable;
@@ -22,8 +22,13 @@ import lepasd.hashgen;
 import lepasd.swkeyboard;
 import lepasd.tags;
 
-extern (C) int daemon(int, int);
-extern (C) int mkfifo(const char*, uint);
+extern (C) @nogc
+{
+    int daemon(int, int);
+    int mkfifo(const char*, uint);
+    enum SIGTERM = 15;
+    int kill(int, int);
+}
 
 void main(string[] args)
 {
@@ -81,7 +86,7 @@ void main(string[] args)
     bool isRunning = isDaemonRunning(pid);
     if (isRunning && isKill)
     {
-        enforce(executeShell("kill " ~ pid).status == 0, "Failed to kill daemon");
+        enforce(!kill(pid.get, SIGTERM), "Failed to kill the daemon");
         isRunning = false;
     }
 
@@ -133,22 +138,26 @@ auto helpText()
     return format!rawHelpFile(confDir, trigger, crc, tagsHelpPath, initOpt);
 }
 
-Nullable!string getPid()
+Nullable!int getPid()
 {
     try
-        return Nullable!string(path.pid.readText.strip);
+    {
+        const pid = path.pid.readText.strip.to!int;
+        enforce(pid > 0);
+        return Nullable!int(pid);
+    }
     catch (Exception)
-        return Nullable!string();
+        return Nullable!int();
 }
 
-bool isDaemonRunning(Nullable!string pid)
+bool isDaemonRunning(Nullable!int pid)
 {
     if (pid.isNull)
         return false;
 
     try
     {
-        const processName = buildPath("/proc", pid.get, "comm").readText.strip;
+        const processName = buildPath("/proc", pid.get.to!string, "comm").readText.strip;
         return processName == appName;
     }
     catch (Exception)
@@ -222,6 +231,7 @@ const string configDir, runDir;
 
 static this()
 {
+    import std.process : environment;
     const home = environment.get("HOME");
     enforce(home, "HOME not set");
     configDir = buildPath(home, relConfigDir);
@@ -340,7 +350,8 @@ retry:
 
 void createRunFiles()
 {
-    import std.conv : octal, to;
+    import std.conv : octal;
+    import std.process : thisProcessID;
     void makeFifo(string path)
     {
         if (!exists(path))
