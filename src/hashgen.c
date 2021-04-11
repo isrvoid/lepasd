@@ -29,9 +29,9 @@ static argon2_context argon2ContextTemplate(void) {
         .saltlen = LEPASD_HASH_SIZE,
         .secret = NULL, .secretlen = 0,
         .ad = NULL, .adlen = 0,
-        .t_cost = 8, // passes
-        .m_cost = 1 << 19, // memory in KB (512 MB)
-        .lanes = 2, .threads = 2,
+        .t_cost = 5, // passes
+        .m_cost = 1 << 20, // memory in KB (1 GB)
+        .lanes = 4, .threads = 4,
         .version = ARGON2_VERSION_13,
         .allocate_cbk = NULL, .free_cbk = NULL,
         .flags = ARGON2_FLAG_CLEAR_PASSWORD
@@ -48,7 +48,7 @@ void lepasd_init(void* password, uint32_t length, void* contextOut) {
     ac.pwd = password;
     ac.pwdlen = length;
     ac.salt = salt;
-    if (argon2id_ctx(&ac) != ARGON2_OK) {
+    if (argon2d_ctx(&ac) != ARGON2_OK) {
         memset(password, 0, length);
         assert(0);
     }
