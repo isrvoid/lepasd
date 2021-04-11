@@ -18,7 +18,7 @@ struct Tag
 {
     string name;
     uint ver;
-    uint length = 24;
+    uint length = 20;
 
     enum Type
     {

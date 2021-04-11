@@ -21,7 +21,7 @@ struct Lut
     enum string dense = chain(iota('!', '\\'), iota(char('\\' + 1), char('~' + 1))).array;
 private:
     enum base10 = iota('0', char('9' + 1));
-    enum conservativeSpecialSet = "!#$%&()*@^_";
+    enum conservativeSpecialSet = "!#$%&()*-@_";
     static assert(conservativeSpecialSet.isSorted);
     enum conservativeSpecial = conservativeSpecialSet.repeat(2).join.takeExactly(21);
 }
