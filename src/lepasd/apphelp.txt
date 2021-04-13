@@ -5,7 +5,7 @@ Usage:
   $ lepasd
   Assuming lepasd/tags has '@sometag', arm typing:
   $ lepasd sometag
-  Within 10 s select the password field and press the configured key to type out the password.
+  Select the password field and press the configured key to type out the password.
 
 Password output depends on the keyboard layout. Make sure English (US) is selected before firing.
 Files (tags, crc) are stored in '%s'.

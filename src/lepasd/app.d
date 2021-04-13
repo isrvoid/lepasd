@@ -425,7 +425,7 @@ void daemonLoop(in ref HashGen gen, in ref SwKeyboard keyboard)
     while (true)
     {
         auto tag = recvTag();
-        enum armedDuration = dur!"seconds"(10);
+        enum armedDuration = dur!"seconds"(12);
         const trigger = recvTrigger(armedDuration);
 
         if (trigger == Trigger.fire)
