@@ -33,6 +33,8 @@ extern (C) @nogc
 void main(string[] args)
 {
     import std.getopt;
+    import std.path : baseName;
+    processName = args[0].baseName;
     bool isAddTag, isTagLine, isKill, isTest;
     const isEmptyArgs = args.length == 1;
     auto opt = getopt(args,
@@ -150,15 +152,18 @@ Nullable!int getPid()
         return Nullable!int();
 }
 
+static string processName;
+
 bool isDaemonRunning(Nullable!int pid)
+in (processName)
 {
     if (pid.isNull)
         return false;
 
     try
     {
-        const processName = buildPath("/proc", pid.get.to!string, "comm").readText.strip;
-        return processName == appName;
+        const pidProcessName = buildPath("/proc", pid.get.to!string, "comm").readText.strip;
+        return pidProcessName == processName;
     }
     catch (Exception)
         return false;
@@ -208,8 +213,7 @@ void test()
     }
 }
 
-enum appName = "lepasd";
-enum relConfigDir = buildPath(".config", appName);
+enum relConfigDir = buildPath(".config", "lepasd");
 enum relRunDir = buildPath(relConfigDir, BaseName.run);
 enum BaseName : string
 {
