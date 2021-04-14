@@ -34,7 +34,7 @@ void main(string[] args)
 {
     import std.getopt;
     import std.path : baseName;
-    processName = args[0].baseName;
+    enforce(args[0].baseName.containsAppName, format!"Process name should contain '%s'"(appName));
     bool isAddTag, isTagLine, isKill, isTest;
     const isEmptyArgs = args.length == 1;
     auto opt = getopt(args,
@@ -129,6 +129,12 @@ void main(string[] args)
     writeln("armed");
 }
 
+bool containsAppName(string s) pure nothrow @safe
+{
+    import std.algorithm : canFind;
+    return s.canFind(appName);
+}
+
 enum tagsHelpPath = buildPath("~", relConfigDir, BaseName.tags);
 auto helpText()
 {
@@ -152,10 +158,7 @@ Nullable!int getPid()
         return Nullable!int();
 }
 
-static string processName;
-
 bool isDaemonRunning(Nullable!int pid)
-in (processName)
 {
     if (pid.isNull)
         return false;
@@ -163,7 +166,7 @@ in (processName)
     try
     {
         const pidProcessName = buildPath("/proc", pid.get.to!string, "comm").readText.strip;
-        return pidProcessName == processName;
+        return pidProcessName.containsAppName;
     }
     catch (Exception)
         return false;
@@ -213,7 +216,8 @@ void test()
     }
 }
 
-enum relConfigDir = buildPath(".config", "lepasd");
+enum appName = "lepasd";
+enum relConfigDir = buildPath(".config", appName);
 enum relRunDir = buildPath(relConfigDir, BaseName.run);
 enum BaseName : string
 {
